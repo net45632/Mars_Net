@@ -1,0 +1,329 @@
+body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Courier New', Courier, monospace;
+    background-color: #050508;
+    color: #e0e0e8;
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+}
+
+.sidebar {
+    width: 320px;
+    background: linear-gradient(180deg, #0d1117 0%, #161b22 100%);
+    border-right: 2px solid #1f6feb;
+    padding: 25px;
+    box-shadow: 5px 0 25px rgba(0,0,0,0.7);
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    z-index: 10;
+    box-sizing: border-box;
+    overflow-y: auto;
+}
+
+h2 {
+    margin-top: 0;
+    font-size: 1.4rem;
+    color: #58a6ff;
+    letter-spacing: 2px;
+    border-bottom: 1px solid #30363d;
+    padding-bottom: 10px;
+}
+
+.status {
+    background-color: rgba(56, 139, 253, 0.1);
+    padding: 10px;
+    border-left: 4px solid #388bfd;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    line-height: 1.4;
+}
+
+label {
+    font-size: 0.85rem;
+    color: #8b949e;
+    text-transform: uppercase;
+    font-weight: bold;
+}
+
+input[type=range] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    background: #21262d;
+    height: 6px;
+    border-radius: 3px;
+    outline: none;
+}
+
+input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #58a6ff;
+    cursor: pointer;
+    box-shadow: 0 0 8px #58a6ff;
+}
+
+button {
+    background-color: #238636;
+    color: #ffffff;
+    border: 1px solid #2ea44f;
+    padding: 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+}
+
+button:hover {
+    background-color: #2ea44f;
+    box-shadow: 0 0 15px rgba(46, 164, 79, 0.6);
+}
+
+#plot-container {
+    flex-grow: 1;
+    height: 100%;
+    width: calc(100% - 320px);
+    background-color: #000000;
+}
+
+/* --- Tabs --- */
+.tabs {
+    display: flex;
+    gap: 6px;
+}
+
+.tab-btn {
+    flex: 1;
+    background-color: #161b22;
+    color: #8b949e;
+    border: 1px solid #30363d;
+    padding: 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.8rem;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: all 0.2s ease;
+}
+
+.tab-btn:hover {
+    background-color: #21262d;
+    box-shadow: none;
+}
+
+.tab-btn.active {
+    background-color: #1f6feb;
+    color: #ffffff;
+    border-color: #58a6ff;
+}
+
+.tab-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.tab-panel.hidden {
+    display: none;
+}
+
+/* --- AI toggle button --- */
+.ai-btn {
+    background-color: #238636;
+    border: 1px solid #2ea44f;
+}
+
+.ai-btn.off {
+    background-color: #8b2020;
+    border: 1px solid #f85149;
+}
+
+.secondary-btn {
+    background-color: #1f6feb;
+    border: 1px solid #58a6ff;
+}
+
+/* --- Collisions tab --- */
+.collision-stats {
+    display: flex;
+    gap: 10px;
+}
+
+.stat-card {
+    flex: 1;
+    background-color: rgba(56, 139, 253, 0.08);
+    border-left: 4px solid #388bfd;
+    border-radius: 4px;
+    padding: 10px;
+    text-align: center;
+}
+
+.stat-card.off {
+    background-color: rgba(248, 81, 73, 0.08);
+    border-left-color: #f85149;
+}
+
+.stat-card label {
+    display: block;
+    font-size: 0.7rem;
+    margin-bottom: 4px;
+}
+
+.stat-count {
+    font-size: 1.6rem;
+    font-weight: bold;
+    color: #e0e0e8;
+}
+
+.stat-rate {
+    font-size: 0.75rem;
+    color: #8b949e;
+    margin-top: 2px;
+}
+
+.reduction-box {
+    background-color: rgba(46, 164, 79, 0.1);
+    border-left: 4px solid #2ea44f;
+    border-radius: 4px;
+    padding: 10px;
+    text-align: center;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #8b949e;
+}
+
+.reduction-box span {
+    display: block;
+    font-size: 1.8rem;
+    color: #3fb950;
+    font-weight: bold;
+    letter-spacing: normal;
+    text-transform: none;
+    margin-top: 4px;
+}
+
+.collision-log {
+    background-color: #0d1117;
+    border: 1px solid #30363d;
+    border-radius: 4px;
+    padding: 8px;
+    height: 220px;
+    overflow-y: auto;
+    font-size: 0.72rem;
+    line-height: 1.5;
+    color: #8b949e;
+}
+
+.collision-log div {
+    border-bottom: 1px solid #21262d;
+    padding: 3px 0;
+}
+
+.collision-log:empty::before {
+    content: "No collisions recorded yet — try switching AI OFF to test the baseline.";
+    color: #6e7681;
+    font-style: italic;
+}
+
+#decision-log:empty::before {
+    content: "No decisions logged yet — start the simulation to see live model activity.";
+}
+
+/* --- Telemetry tab --- */
+.telemetry-chart {
+    background-color: #0d1117;
+    border: 1px solid #30363d;
+    border-radius: 4px;
+    height: 140px;
+    width: 100%;
+}
+
+.sat-table-wrap {
+    max-height: 180px;
+    overflow-y: auto;
+    border: 1px solid #30363d;
+    border-radius: 4px;
+}
+
+.sat-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.72rem;
+}
+
+.sat-table th {
+    position: sticky;
+    top: 0;
+    background-color: #161b22;
+    color: #58a6ff;
+    text-align: left;
+    padding: 6px 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.sat-table td {
+    padding: 5px 8px;
+    border-top: 1px solid #21262d;
+    color: #c9d1d9;
+}
+
+.sat-table tr.status-safe td:last-child { color: #3fb950; }
+.sat-table tr.status-caution td:last-child { color: #d29922; }
+.sat-table tr.status-danger td:last-child { color: #f85149; font-weight: bold; }
+
+.report-chart-wrap {
+    position: relative;
+}
+
+.report-chart-img {
+    width: 100%;
+    display: block;
+    border-radius: 4px;
+    border: 1px solid #30363d;
+}
+
+.report-chart-img.hidden {
+    display: none;
+}
+
+.report-chart-fallback {
+    background-color: #0d1117;
+    border: 1px solid #30363d;
+    border-radius: 4px;
+    padding: 20px 10px;
+    text-align: center;
+    font-size: 0.75rem;
+    color: #6e7681;
+    font-style: italic;
+}
+
+.report-chart-fallback.hidden {
+    display: none;
+}
+
+.download-links {
+    display: flex;
+    gap: 8px;
+}
+
+.download-link {
+    flex: 1;
+    text-align: center;
+    text-decoration: none;
+    font-size: 0.75rem;
+    font-weight: bold;
+    padding: 10px;
+    border-radius: 6px;
+    box-sizing: border-box;
+}

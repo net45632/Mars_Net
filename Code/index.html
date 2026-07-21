@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Martian Satellite Simulation</title>
+    <link rel="stylesheet" href="./style.css">
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+</head>
+<body>
+    <div class="sidebar">
+        <h2>🛰️ Control Panel</h2>
+
+        <div class="tabs">
+            <button id="tab-btn-control" class="tab-btn active">Control</button>
+            <button id="tab-btn-collisions" class="tab-btn">Collisions</button>
+            <button id="tab-btn-telemetry" class="tab-btn">Telemetry</button>
+        </div>
+
+        <div id="tab-panel-control" class="tab-panel">
+            <div class="status">Telemetry Track:<br><strong id="status-text">Connecting to AI...</strong></div>
+
+            <label>Orbit Multiplier: <span id="alt-val">1.00</span>x</label>
+            <br>
+            <label>Animation Speed: <span id="speed-val">1.0</span>x</label>
+            <input type="range" id="speed" min="0.1" max="3.0" step="0.1" value="1.0">
+
+            <button id="toggle-sim">⏸ Pause Simulation</button>
+
+            <button id="ai-toggle-btn" class="ai-btn off">🤖 AI: OFF</button>
+
+            <button id="reset-view-btn" class="secondary-btn">🔭 Reset View</button>
+        </div>
+
+        <div id="tab-panel-collisions" class="tab-panel hidden">
+            <div class="collision-stats">
+                <div class="stat-card off">
+                    <label>AI OFF</label>
+                    <div class="stat-count" id="off-collision-count">0</div>
+                    <div class="stat-rate" id="off-collision-rate">0.0/min</div>
+                </div>
+                <div class="stat-card on">
+                    <label>AI ON</label>
+                    <div class="stat-count" id="on-collision-count">0</div>
+                    <div class="stat-rate" id="on-collision-rate">0.0/min</div>
+                </div>
+            </div>
+
+            <div class="reduction-box">
+                Collision Rate Reduction
+                <span id="collision-reduction">—</span>
+            </div>
+
+            <label>Event Log</label>
+            <div id="collision-log" class="collision-log"></div>
+        </div>
+
+        <div id="tab-panel-telemetry" class="tab-panel hidden">
+            <label>Orbit Multiplier (last 100 samples)</label>
+            <div id="telemetry-chart" class="telemetry-chart"></div>
+
+            <label>Satellite Status</label>
+            <div class="sat-table-wrap">
+                <table class="sat-table">
+                    <thead>
+                        <tr><th>ID</th><th>Radius</th><th>Nearest Threat</th><th>Status</th></tr>
+                    </thead>
+                    <tbody id="sat-table-body"></tbody>
+                </table>
+            </div>
+
+            <label>Decision Log</label>
+            <div id="decision-log" class="collision-log"></div>
+
+            <label>Session Report (matplotlib)</label>
+            <div class="report-chart-wrap">
+                <img id="report-chart-img" class="report-chart-img" alt="Session report chart">
+                <div id="report-chart-fallback" class="report-chart-fallback hidden">Report unavailable — is server.py running?</div>
+            </div>
+
+            <div class="download-links">
+                <a href="http://127.0.0.1:8000/download-log" class="secondary-btn download-link" download>⬇ Model Log CSV</a>
+                <a href="http://127.0.0.1:8000/download-sim-log" class="secondary-btn download-link" download>⬇ Sim Log CSV</a>
+            </div>
+        </div>
+    </div>
+    <div id="plot-container"></div>
+    <script src="./script.js"></script>
+</body>
+</html>
