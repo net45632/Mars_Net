@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Marsnet-RL | AI-Driven Orbital Debris Avoidance</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-dark: #07090e;
+            --card-bg: rgba(18, 22, 31, 0.6);
+            --card-border: rgba(255, 255, 255, 0.08);
+            --accent-cyan: #38bdf8;
+            --accent-purple: #818cf8;
+            --accent-green: #34d399;
+            --text-main: #f3f4f6;
+            --text-muted: #9ca3af;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            overflow-x: hidden;
+            line-height: 1.6;
+        }
+
+        /* --- BACKGROUND ANIMATIONS --- */
+        .grid-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-image: 
+                linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            z-index: -2;
+        }
+
+        .glow-orb {
+            position: fixed;
+            width: 600px;
+            height: 600px;
+            border-radius: 50%;
+            filter: blur(140px);
+            opacity: 0.18;
+            pointer-events: none;
+            z-index: -1;
+            animation: floatGlow 12s infinite alternate ease-in-out;
+        }
+
+        .orb-1 {
+            top: -200px;
+            left: -100px;
+            background: radial-gradient(circle, var(--accent-cyan), transparent);
+        }
+
+        .orb-2 {
+            bottom: -200px;
+            right: -100px;
+            background: radial-gradient(circle, var(--accent-purple), transparent);
+            animation-delay: -6s;
+        }
+
+        @keyframes floatGlow {
+            0% { transform: translate(0, 0) scale(1); }
+            100% { transform: translate(60px, 40px) scale(1.1); }
+        }
+
+        /* --- NAVBAR --- */
+        nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.5rem 4rem;
+            backdrop-filter: blur(12px);
+            background: rgba(7, 9, 14, 0.7);
+            border-bottom: 1px solid var(--card-border);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 800;
+            font-size: 1.25rem;
+            letter-spacing: -0.5px;
+            background: linear-gradient(135deg, #fff 0%, var(--text-muted) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            align-items: center;
+        }
+
+        .nav-links a {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: color 0.2s ease;
+        }
+
+        .nav-links a:hover {
+            color: #fff;
+        }
+
+        /* --- BUTTONS --- */
+        .btn-primary {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 0.75rem 1.5rem;
+            border-radius: 9999px;
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+            color: #fff;
+            font-weight: 600;
+            font-size: 0.95rem;
+            text-decoration: none;
+            box-shadow: 0 4px 20px rgba(56, 189, 248, 0.25);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(56, 189, 248, 0.4);
+        }
+
+        .btn-secondary {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 0.75rem 1.5rem;
+            border-radius: 9999px;
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-main);
+            font-weight: 600;
+            font-size: 0.95rem;
+            text-decoration: none;
+            border: 1px solid var(--card-border);
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+
+        /* --- HERO SECTION --- */
+        .hero {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 7rem 2rem 5rem;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 16px;
+            border-radius: 9999px;
+            background: rgba(56, 189, 248, 0.1);
+            border: 1px solid rgba(56, 189, 248, 0.2);
+            color: var(--accent-cyan);
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 2rem;
+            animation: pulse 2s infinite alternate;
+        }
+
+        @keyframes pulse {
+            0% { border-color: rgba(56, 189, 248, 0.2); }
+            100% { border-color: rgba(56, 189, 248, 0.6); }
+        }
+
+        .hero h1 {
+            font-size: 4rem;
+            font-weight: 800;
+            line-height: 1.1;
+            letter-spacing: -1.5px;
+            margin-bottom: 1.5rem;
+            background: linear-gradient(180deg, #FFFFFF 0%, #94A3B8 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .hero p {
+            font-size: 1.2rem;
+            color: var(--text-muted);
+            max-width: 680px;
+            margin-bottom: 2.5rem;
+            font-weight: 400;
+        }
+
+        .cta-group {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        /* --- HERO GRAPHIC PREVIEW --- */
+        .preview-container {
+            max-width: 1000px;
+            margin: 3rem auto 6rem;
+            padding: 10px;
+            border-radius: 16px;
+            background: linear-gradient(180deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.02) 100%);
+            border: 1px solid var(--card-border);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+        }
+
+        .preview-window {
+            background: #0d1117;
+            border-radius: 12px;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            text-align: left;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .window-header {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 1rem;
+        }
+
+        .dot { width: 12px; height: 12px; border-radius: 50%; background: #333; }
+        .dot.red { background: #ff5f56; }
+        .dot.yellow { background: #ffbd2e; }
+        .dot.green { background: #27c93f; }
+
+        .code-preview {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+            color: #e6edf3;
+            line-height: 1.7;
+        }
+
+        .code-keyword { color: #ff7b72; }
+        .code-func { color: #d2a8ff; }
+        .code-str { color: #a5d6ff; }
+        .code-comment { color: #8b949e; font-style: italic; }
+
+        /* --- FEATURES SECTION --- */
+        .features {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 4rem 2rem;
+        }
+
+        .section-title {
+            text-align: center;
+            margin-bottom: 4rem;
+        }
+
+        .section-title h2 {
+            font-size: 2.25rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: 2rem;
+            backdrop-filter: blur(12px);
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .card:hover {
+            border-color: rgba(255, 255, 255, 0.2);
+            transform: translateY(-4px);
+            background: rgba(22, 27, 38, 0.8);
+        }
+
+        .card-icon {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+            display: inline-block;
+        }
+
+        .card h3 {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .card p {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        /* --- FOOTER --- */
+        footer {
+            border-top: 1px solid var(--card-border);
+            padding: 3rem 4rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            margin-top: 4rem;
+        }
+
+        @media (max-width: 768px) {
+            nav { padding: 1rem 1.5rem; }
+            .hero h1 { font-size: 2.5rem; }
+            .hero p { font-size: 1rem; }
+            .cta-group { flex-direction: column; width: 100%; }
+            .btn-primary, .btn-secondary { width: 100%; justify-content: center; }
+            footer { flex-direction: column; gap: 1rem; text-align: center; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="grid-bg"></div>
+    <div class="glow-orb orb-1"></div>
+    <div class="glow-orb orb-2"></div>
+
+    <nav>
+        <div class="logo">
+            <span>🛰️</span> Marsnet-RL Engine
+        </div>
+        <div class="nav-links">
+            <a href="#features">Features</a>
+            <a href="#telemetry">Telemetry</a>
+            <a href="/index.html" class="btn-primary">Try Simulator &rarr;</a>
+        </div>
+    </nav>
+
+    <section class="hero">
+        <div class="badge">
+            <span>✨</span> Next-Gen Orbital Safety Engine
+        </div>
+        <h1>Autonomous Space Debris Avoidance via Reinforcement Learning</h1>
+        <p>
+            Real-time orbital telemetry analysis paired with multi-agent Q-learning models to execute collision-avoidance maneuvers seamlessly.
+        </p>
+        <div class="cta-group">
+            <a href="/index.html" class="btn-primary">
+                Launch Simulator
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </a>
+            <a href="#features" class="btn-secondary">Explore Features</a>
+        </div>
+    </section>
+
+    <div class="preview-container">
+        <div class="preview-window">
+            <div class="window-header">
+                <div class="dot red"></div>
+                <div class="dot yellow"></div>
+                <div class="dot green"></div>
+            </div>
+            <pre class="code-preview"><code><span class="code-comment"># Initializing multi-satellite reinforcement learning agent</span>
+<span class="code-keyword">from</span> RL_Agent <span class="code-keyword">import</span> agent <span class="code-keyword">as</span> rl_agent
+
+<span class="code-keyword">async def</span> <span class="code-func">step_orbital_simulation</span>(satellites):
+    <span class="code-comment"># Real-time state evaluation and collision-mitigation dynamic multiplier computation</span>
+    action_batch = rl_agent.<span class="code-func">step_batch</span>([sat.<span class="code-func">dict</span>() <span class="code-keyword">for</span> sat <span class="code-keyword">in</span> satellites])
+    <span class="code-keyword">return</span> { <span class="code-str">"status"</span>: <span class="code-str">"OPTIMAL_ORBIT"</span>, <span class="code-str">"telemetry"</span>: action_batch }</code></pre>
+        </div>
+    </div>
+
+    <section class="features" id="features">
+        <div class="section-title">
+            <h2>Engineered for High-Risk Orbits</h2>
+            <p style="color: var(--text-muted)">Built to optimize collision metrics while maintaining telemetry efficiency.</p>
+        </div>
+
+        <div class="grid">
+            <div class="card">
+                <div class="card-icon">⚡</div>
+                <h3>Multi-Agent Q-Learning</h3>
+                <p>Each satellite independently learns state transitions to react flexibly without disturbing global fleet coordination.</p>
+            </div>
+            <div class="card">
+                <div class="card-icon">📊</div>
+                <h3>Live Telemetry Analytics</h3>
+                <p>Export precise distance snapshots, collision rates, and decision logs on the fly into CSV standard formats.</p>
+            </div>
+            <div class="card">
+                <div class="card-icon">🤖</div>
+                <h3>Built-in AI Assistant</h3>
+                <p>Interact with integrated conversational agents trained to diagnose orbital metrics and state decisions.</p>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <div>Marsnet Orbital Dynamics Simulator</div>
+        <div>Built with FastAPI, PyTorch & Matplotlib</div>
+    </footer>
+
+</body>
+</html>

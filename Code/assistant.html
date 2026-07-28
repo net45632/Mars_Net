@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Assistant & RL Engine</title>
+    <!-- Links to your existing stylesheets -->
+    <link rel="stylesheet" href="./style.css">
+    
+    <style>
+        /* 1. Define Default CSS Variables for Theming */
+        :root {
+            --bg-page: #050508;
+            --bg-panel: #0d1117;
+            --accent-color: #1f6feb;
+            --text-main: #ffffff;
+            --text-secondary: #8b949e;
+            --border-color: #30363d;
+        }
+
+        /* 2. Apply the variables to the layout */
+        body {
+            background-color: var(--bg-page);
+            color: var(--text-main);
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 40px 20px;
+            overflow-y: auto;
+            height: auto;
+            min-height: 100vh;
+            font-family: sans-serif;
+            transition: background-color 0.3s ease;
+        }
+        
+        .assistant-wrapper {
+            width: 100%;
+            max-width: 900px;
+            background-color: var(--bg-panel);
+            border: 2px solid var(--accent-color);
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            transition: background-color 0.3s ease, border-color 0.3s ease;
+        }
+
+        /* Theme Controls UI */
+        .theme-controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            background: rgba(0,0,0,0.2);
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            align-items: center;
+            font-size: 0.9em;
+        }
+        .theme-controls label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+        }
+        .theme-controls input[type="color"] {
+            border: none;
+            width: 30px;
+            height: 30px;
+            border-radius: 4px;
+            cursor: pointer;
+            background: transparent;
+        }
+
+        /* Elements inside the wrapper */
+        .chat-messages {
+            height: 40vh;
+            overflow-y: auto;
+            border: 1px solid var(--border-color);
+            padding: 15px;
+            border-radius: 6px;
+            background: rgba(0, 0, 0, 0.1);
+        }
+        .chat-bubble {
+            margin-bottom: 10px;
+            padding: 10px;
+            border-radius: 6px;
+            max-width: 80%;
+        }
+        .chat-bubble.user {
+            background-color: var(--accent-color);
+            color: #fff;
+            align-self: flex-end;
+            margin-left: auto;
+        }
+        .chat-bubble.assistant {
+            background-color: var(--border-color);
+            color: var(--text-main);
+        }
+        .chat-input-row {
+            display: flex;
+            gap: 10px;
+        }
+        .chat-input {
+            flex-grow: 1;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            background-color: transparent;
+            color: var(--text-main);
+            border-radius: 4px;
+        }
+        
+        button {
+            background-color: var(--accent-color);
+            color: #ffffff;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: opacity 0.2s;
+        }
+        button:hover {
+            opacity: 0.8;
+        }
+
+        .q-table-view {
+            max-height: 250px;
+            overflow-y: auto;
+            background: #000;
+            color: #0f0;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            border: 1px solid var(--border-color);
+        }
+        
+        hr {
+            border: 0;
+            border-top: 1px solid var(--border-color);
+            margin: 10px 0;
+            width: 100%;
+        }
+        
+        .rl-explanation {
+            font-size: 0.85rem; 
+            color: var(--text-secondary); 
+            line-height: 1.4; 
+            margin-top: 5px;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="assistant-wrapper">
+        <h2>🤖 AI Mission Assistant</h2>
+        
+        <!-- Theme Controls -->
+        <div class="theme-controls">
+            <strong>🎨 Customize UI:</strong>
+            <label>
+                Page Background
+                <input type="color" id="color-page" value="#050508">
+            </label>
+            <label>
+                Panel Background
+                <input type="color" id="color-panel" value="#0d1117">
+            </label>
+            <label>
+                Accent (Buttons/Borders)
+                <input type="color" id="color-accent" value="#1f6feb">
+            </label>
+            <label>
+                Text
+                <input type="color" id="color-text" value="#ffffff">
+            </label>
+        </div>
+        
+        <!-- Chat Interface -->
+        <div id="chat-messages" class="chat-messages"></div>
+        <div class="chat-input-row">
+            <input type="text" id="chat-input" class="chat-input" placeholder="Ask about the simulation...">
+            <button id="chat-send-btn" class="chat-send-btn">Send</button>
+        </div>
+
+        <hr>
+
+        <!-- RL Q-Table Interface -->
+        <div>
+            <label style="color: var(--text-main); font-weight: bold; font-size: 1.1em;">RL Agent Q-Table (State / Action Values)</label>
+            <p class="rl-explanation">
+                <strong>How it works:</strong> The Q-Table is the "brain" of our Reinforcement Learning agent. It maps specific situations (states) to possible maneuvers (actions). The numbers you see are <em>Q-values</em>, which represent the expected future reward of taking a specific action in that state. As the simulation runs, the agent constantly updates these values—learning from collisions (penalties) and successful evasions (rewards) to discover the safest flight paths.
+            </p>
+        </div>
+        
+        <div id="q-table-view" class="q-table-view">Loading Q-table...</div>
+        <button id="rl-reset-btn">Reset RL Agent Memory</button>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // --- Theming Logic ---
+            const root = document.documentElement;
+            
+            const colorInputs = {
+                'color-page': '--bg-page',
+                'color-panel': '--bg-panel',
+                'color-accent': '--accent-color',
+                'color-text': '--text-main'
+            };
+
+            // Add event listeners to all color pickers
+            for (const [inputId, cssVar] of Object.entries(colorInputs)) {
+                const inputEl = document.getElementById(inputId);
+                if (inputEl) {
+                    inputEl.addEventListener('input', (e) => {
+                        root.style.setProperty(cssVar, e.target.value);
+                    });
+                }
+            }
+
+            // --- App Elements ---
+            const chatMessagesEl = document.getElementById('chat-messages');
+            const chatInputEl = document.getElementById('chat-input');
+            const chatSendBtn = document.getElementById('chat-send-btn');
+            const qTableViewEl = document.getElementById('q-table-view');
+            const rlResetBtn = document.getElementById('rl-reset-btn');
+
+            let chatHistory = [];
+
+            // --- Q-Table Logic ---
+            function refreshQTable() {
+                if (!qTableViewEl) return;
+                fetch('http://127.0.0.1:8000/rl-debug')
+                    .then(res => res.json())
+                    .then(data => {
+                        qTableViewEl.innerText = JSON.stringify(data, null, 2);
+                    })
+                    .catch(() => {
+                        qTableViewEl.innerText = "Q-table unavailable — is server.py running?";
+                    });
+            }
+            
+            // Initial fetch and real-time interval updates (every 500ms)
+            refreshQTable();
+            setInterval(refreshQTable, 500);
+
+            if (rlResetBtn) {
+                rlResetBtn.addEventListener('click', () => {
+                    fetch('http://127.0.0.1:8000/rl-reset')
+                        .then(res => res.json())
+                        .then(() => {
+                            refreshQTable();
+                            appendChatBubble('assistant', "System: RL agent memory has been successfully reset. Rebuilding Q-Table from baseline.", 'pending');
+                        });
+                });
+            }
+
+            // --- Chatbot Logic ---
+            function appendChatBubble(role, text, className) {
+                if (!chatMessagesEl) return null;
+                let bubble = document.createElement('div');
+                bubble.className = 'chat-bubble ' + role + (className ? ' ' + className : '');
+                bubble.textContent = text;
+                chatMessagesEl.appendChild(bubble);
+                chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+                return bubble;
+            }
+
+            function sendChatMessage() {
+                if (!chatInputEl) return;
+                let message = chatInputEl.value.trim();
+                if (!message) return;
+
+                appendChatBubble('user', message);
+                chatInputEl.value = '';
+                if (chatSendBtn) chatSendBtn.disabled = true;
+
+                let pendingBubble = appendChatBubble('assistant', 'Thinking…', 'pending');
+
+                fetch('http://127.0.0.1:8000/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: message,
+                        history: chatHistory,
+                        context: { standalone_mode: true } 
+                    })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (pendingBubble) pendingBubble.remove();
+                    appendChatBubble('assistant', data.reply, data.error ? 'error' : null);
+                    if (!data.error) {
+                        chatHistory.push({ role: 'user', content: message });
+                        chatHistory.push({ role: 'assistant', content: data.reply });
+                        if (chatHistory.length > 20) chatHistory = chatHistory.slice(-20);
+                    }
+                })
+                .catch(() => {
+                    if (pendingBubble) pendingBubble.remove();
+                    appendChatBubble('assistant', "Can't reach the backend — make sure server.py is running.", 'error');
+                })
+                .finally(() => {
+                    if (chatSendBtn) chatSendBtn.disabled = false;
+                });
+            }
+
+            if (chatSendBtn) chatSendBtn.addEventListener('click', sendChatMessage);
+            if (chatInputEl) {
+                chatInputEl.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') sendChatMessage();
+                });
+            }
+        });
+    </script>
+</body>
+</html>

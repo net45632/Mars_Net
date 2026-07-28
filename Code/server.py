@@ -1,19 +1,24 @@
+import os
 import time
 import io
-from typing import Optional
+from typing import Optional, List
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse, Response
+from fastapi.responses import StreamingResponse, Response, FileResponse
 from pydantic import BaseModel
 import pandas as pd
 import matplotlib
-matplotlib.use("Agg")  # headless backend — no display available on the server
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+
+from chatbot import ChatRequest, get_chat_reply
+from RL_Agent import agent as rl_agent
+
+START_TIME = time.time()
 
 app = FastAPI()
 
-# Allow your HTML file to securely talk to this Python server
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -22,61 +27,63 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# --- REINFORCEMENT LEARNING SIMULATION STATE ---
-class RLOrtbitOptimizer:
-    def __init__(self):
-        self.start_time = time.time()
-        self.call_count = 0
-        # Training duration is now real elapsed seconds, NOT number of poll calls.
-        # The frontend can poll at 10fps or 60fps and the demo still paces the same way.
-        self.total_training_seconds = 20.0
-        self.altitude_multiplier = 1.0
-
-    def reset(self):
-        self.start_time = time.time()
-        self.call_count = 0
-        self.altitude_multiplier = 1.0
-
-    def step(self):
-        """
-        This represents your RL Agent's step function.
-        It evaluates the environment state (debris density) and adjusts the orbit.
-        """
-        self.call_count += 1
-        elapsed = time.time() - self.start_time
-
-        if elapsed < self.total_training_seconds:
-            # Simulated Q-Learning/Policy update, paced by real time:
-            # The AI learns that staying too low hits debris, so it actively increments altitude
-            progress = elapsed / self.total_training_seconds  # 0.0 .. 1.0
-            state_idx = min(3, int(progress * 4))
-            self.altitude_multiplier = 0.85 + (state_idx * 0.15)
-            mode = f"Training Phase ({elapsed:.1f}s / {self.total_training_seconds:.0f}s)"
-        else:
-            # Exploitation Phase: AI has settled on the optimal stable clearance scale
-            self.altitude_multiplier = 1.30
-            mode = "Live Deployment (Optimal State)"
-
-        return {
-            "step": self.call_count,
-            "elapsed_seconds": round(elapsed, 2),
-            "altitude_multiplier": self.altitude_multiplier,
-            "mode": mode,
-        }
 
 
-# Instantiate our AI agent
-ai_agent = RLOrtbitOptimizer()
 
-# --- TELEMETRY LOGGING (model steps) ---
-# Every call to /next-step gets appended here. This is the ground-truth data trail —
-# separate from the live in-browser chart, meant for CSV export / retrospective reports.
+# --- ROUTING & STATIC FILES ---
+@app.get("/")
+def read_landing():
+    if not os.path.exists("landing.html"):
+        raise HTTPException(status_code=404, detail="landing.html file not found on server.")
+    return FileResponse("landing.html")
+
+
+@app.get("/landing.html")
+def read_landing_direct():
+    return read_landing()
+
+
+@app.get("/app")
+def read_app():
+    if not os.path.exists("index.html"):
+        raise HTTPException(status_code=404, detail="index.html file not found on server.")
+    return FileResponse("index.html")
+
+
+@app.get("/index.html")
+def read_index_direct():
+    return read_app()
+
+
+@app.get("/telemetry.html")
+def read_telemetry_page():
+    if not os.path.exists("telemetry.html"):
+        raise HTTPException(status_code=404, detail="telemetry.html not found on server.")
+    return FileResponse("telemetry.html")
+
+@app.get("/assistant.html")
+async def serve_assistant_ui():
+    return FileResponse("assistant.html")
+
+
+@app.get("/style.css")
+def read_style():
+    if not os.path.exists("style.css"):
+        raise HTTPException(status_code=404, detail="style.css not found.")
+    return FileResponse("style.css", media_type="text/css")
+
+
+@app.get("/script.js")
+def read_script():
+    if not os.path.exists("script.js"):
+        raise HTTPException(status_code=404, detail="script.js not found.")
+    return FileResponse("script.js", media_type="application/javascript")
+
+
+# --- TELEMETRY LOGS & STATE ---
 telemetry_log = []
-
-# --- TELEMETRY LOGGING (real simulation outcomes, reported by the frontend) ---
-# This is the data that actually proves the AI is doing something: real collision counts,
-# real distances, on a different cadence (~every 2s) than the model's own per-poll log above.
 sim_log = []
+cumulative_fuel = 0.0
 
 
 class TelemetrySnapshot(BaseModel):
@@ -100,108 +107,106 @@ def post_telemetry(snapshot: TelemetrySnapshot):
     return {"status": "ok", "logged": len(sim_log)}
 
 
-@app.get("/download-sim-log")
-def download_sim_log():
-    """Export the real simulation telemetry (collisions, distances) as a CSV file."""
-    df = pd.DataFrame(sim_log)
-    buf = io.StringIO()
-    df.to_csv(buf, index=False)
-    buf.seek(0)
-    return StreamingResponse(
-        iter([buf.getvalue()]),
-        media_type="text/csv",
-        headers={"Content-Disposition": "attachment; filename=sim_telemetry_log.csv"},
-    )
+# --- REAL RL AGENT ROUTES ---
+class SatelliteState(BaseModel):
+    sat_idx: int
+    distance: Optional[float] = None
+    had_collision: bool = False
+    safe_direction: str = "INCREASE"
 
 
-@app.get("/next-step")
-def get_next_step():
-    # When the frontend asks, run one iteration of the AI model and return the data
-    result = ai_agent.step()
-    telemetry_log.append({
-        "timestamp": time.time(),
-        "step": result["step"],
-        "elapsed_seconds": result["elapsed_seconds"],
-        "altitude_multiplier": result["altitude_multiplier"],
-        "mode": result["mode"],
-    })
-    return result
+class MultiRLStepRequest(BaseModel):
+    satellites: List[SatelliteState]
 
 
-@app.get("/reset")
-def reset_simulation():
-    ai_agent.reset()
-    return {"status": "AI reset successful"}
+@app.post("/rl-step-multi")
+def rl_step_multi(req: MultiRLStepRequest):
+    global cumulative_fuel
+    start_proc = time.time()
+    results = rl_agent.step_batch([s.dict() for s in req.satellites])
+    proc_latency = (time.time() - start_proc) * 1000.0  # ms
+
+    if results:
+        avg_multiplier = sum(r["multiplier"] for r in results) / len(results)
+        shielded_count = sum(1 for r in results if r["shielded"])
+
+        # Fuel model: Penalize orbital alterations
+        non_hold_moves = sum(1 for r in results if r["action"] != "HOLD")
+        cumulative_fuel += non_hold_moves * 0.05
+
+        telemetry_log.append({
+            "timestamp": time.time(),
+            "step": rl_agent.total_steps,
+            "elapsed_seconds": round(time.time() - START_TIME, 2),
+            "altitude_multiplier": round(avg_multiplier, 3),
+            "shielded_count": shielded_count,
+            "epsilon": round(rl_agent.epsilon, 3),
+            "fuel_expenditure": round(cumulative_fuel, 2),
+            "latency_ms": round(proc_latency, 2)
+        })
+
+    return {"results": results, "epsilon": round(rl_agent.epsilon, 3), "total_steps": rl_agent.total_steps}
 
 
-@app.get("/download-log")
-def download_log():
-    """Export the full telemetry history as a CSV file."""
-    df = pd.DataFrame(telemetry_log)
-    buf = io.StringIO()
-    df.to_csv(buf, index=False)
-    buf.seek(0)
-    return StreamingResponse(
-        iter([buf.getvalue()]),
-        media_type="text/csv",
-        headers={"Content-Disposition": "attachment; filename=telemetry_log.csv"},
-    )
+@app.get("/telemetry-live")
+def get_telemetry_live():
+    """Serves structured time-series data for the 8 telemetry models."""
+    times = [t["elapsed_seconds"] for t in telemetry_log[-60:]]
+    multipliers = [t["altitude_multiplier"] for t in telemetry_log[-60:]]
+    shielded = [t["shielded_count"] for t in telemetry_log[-60:]]
+    epsilons = [t["epsilon"] for t in telemetry_log[-60:]]
+    fuels = [t["fuel_expenditure"] for t in telemetry_log[-60:]]
+    latencies = [t["latency_ms"] for t in telemetry_log[-60:]]
+
+    sim_recent = sim_log[-60:]
+    min_distances = [s.get("min_nearest_distance", 1.0) or 1.0 for s in sim_recent]
+    off_hits = [s.get("off_collisions", 0) for s in sim_recent]
+    on_hits = [s.get("on_collisions", 0) for s in sim_recent]
+    num_caution = [s.get("num_caution", 0) for s in sim_recent]
+    num_danger = [s.get("num_danger", 0) for s in sim_recent]
+
+    return {
+        "times": times,
+        "multipliers": multipliers,
+        "min_distances": min_distances,
+        "off_collisions": off_hits,
+        "on_collisions": on_hits,
+        "shielded_counts": shielded,
+        "epsilons": epsilons,
+        "fuel_expenditure": fuels,
+        "num_caution": num_caution,
+        "num_danger": num_danger,
+        "latencies": latencies
+    }
 
 
-@app.get("/report-chart")
-def report_chart():
-    """Render a matplotlib PNG summarizing the session: orbit multiplier (model log),
-    plus collision counts and nearest-threat distance over time (real sim telemetry)."""
-    model_df = pd.DataFrame(telemetry_log)
-    sim_df = pd.DataFrame(sim_log)
+@app.get("/rl-debug")
+def rl_debug():
+    return {
+        "q_table": rl_agent.debug_table(),
+        "epsilon": round(rl_agent.epsilon, 3),
+        "multipliers": rl_agent.debug_multipliers(),
+        "total_steps": rl_agent.total_steps,
+    }
 
-    fig, axes = plt.subplots(3, 1, figsize=(7, 7.5), dpi=140, sharex=False)
-    fig.patch.set_facecolor("#0d1117")
 
-    def style_axis(ax, title):
-        ax.set_facecolor("#0d1117")
-        ax.set_title(title, color="#c9d1d9", fontsize=10, loc="left")
-        ax.tick_params(colors="#8b949e", labelsize=8)
-        for spine in ax.spines.values():
-            spine.set_color("#30363d")
-        ax.grid(True, color="#21262d", linewidth=0.6)
+@app.get("/rl-reset")
+def rl_reset():
+    """Resets RL memory AND flushes telemetry logs to keep reset data clean."""
+    global telemetry_log, sim_log, cumulative_fuel, START_TIME
+    rl_agent.reset()
+    telemetry_log.clear()
+    sim_log.clear()
+    cumulative_fuel = 0.0
+    START_TIME = time.time()
+    return {"status": "RL agent reset & telemetry logs flushed"}
 
-    # Panel 1: orbit multiplier over time (model log)
-    style_axis(axes[0], "Orbit Multiplier")
-    if not model_df.empty:
-        axes[0].plot(model_df["elapsed_seconds"], model_df["altitude_multiplier"],
-                      color="#58a6ff", linewidth=1.6)
-    axes[0].set_ylabel("multiplier", color="#8b949e", fontsize=8)
 
-    # Panel 2: collision counts, AI off vs on (real sim telemetry)
-    style_axis(axes[1], "Collisions — AI OFF vs AI ON")
-    if not sim_df.empty:
-        axes[1].plot(sim_df["elapsed_seconds"], sim_df["off_collisions"],
-                      color="#f85149", linewidth=1.6, label="AI OFF")
-        axes[1].plot(sim_df["elapsed_seconds"], sim_df["on_collisions"],
-                      color="#3fb950", linewidth=1.6, label="AI ON")
-        axes[1].legend(facecolor="#161b22", edgecolor="#30363d", labelcolor="#c9d1d9", fontsize=8)
-    axes[1].set_ylabel("count", color="#8b949e", fontsize=8)
-
-    # Panel 3: nearest-threat distance over time, with the collision threshold marked
-    style_axis(axes[2], "Nearest Threat Distance")
-    if not sim_df.empty:
-        axes[2].plot(sim_df["elapsed_seconds"], sim_df["min_nearest_distance"],
-                      color="#d29922", linewidth=1.6)
-        axes[2].axhline(0.35, color="#f85149", linewidth=1.0, linestyle="--", label="collision threshold")
-        axes[2].legend(facecolor="#161b22", edgecolor="#30363d", labelcolor="#c9d1d9", fontsize=8)
-    axes[2].set_xlabel("Elapsed seconds", color="#8b949e", fontsize=9)
-    axes[2].set_ylabel("distance", color="#8b949e", fontsize=8)
-
-    fig.tight_layout()
-    buf = io.BytesIO()
-    fig.savefig(buf, format="png", facecolor=fig.get_facecolor())
-    plt.close(fig)
-    buf.seek(0)
-    return Response(content=buf.getvalue(), media_type="image/png")
+@app.post("/chat")
+def chat(req: ChatRequest):
+    return get_chat_reply(req)
 
 
 if __name__ == "__main__":
     import uvicorn
-    # Runs the backend local server on http://127.0.0.1:8000
     uvicorn.run(app, host="127.0.0.1", port=8000)

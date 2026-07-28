@@ -1,4 +1,24 @@
-.venv/
-__pycache__/
 *.pyc
+
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+env/
+.env
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Logs, databases, and telemetry exports
+*.log
+*.sqlite3
+*.csv
+
+# IDE / Editor folders
 .vscode/
+.idea/

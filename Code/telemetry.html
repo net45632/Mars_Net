@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Martian Fleet — Telemetry Mission Control</title>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #05070a;
+            --panel-bg: #0d1117;
+            --panel-border: #21262d;
+            --accent-blue: #58a6ff;
+            --accent-green: #3fb950;
+            --accent-red: #f85149;
+            --accent-yellow: #d29922;
+            --text-main: #c9d1d9;
+            --text-muted: #8b949e;
+        }
+
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, monospace;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            box-sizing: border-box;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #1f6feb;
+            padding-bottom: 12px;
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 1.5rem;
+            color: var(--accent-blue);
+            letter-spacing: 1.5px;
+        }
+
+        .status-container {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .sync-badge {
+            background: rgba(63, 185, 80, 0.15);
+            color: var(--accent-green);
+            border: 1px solid var(--accent-green);
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        @media (max-width: 1400px) {
+            .grid-container { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        .card {
+            background-color: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            border-radius: 8px;
+            padding: 14px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .card-header {
+            font-size: 0.85rem;
+            font-weight: bold;
+            color: #ffffff;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 6px;
+        }
+
+        .card-desc {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            background: rgba(255, 255, 255, 0.03);
+            border-left: 2px solid #30363d;
+            padding: 6px 10px;
+            margin-bottom: 10px;
+            border-radius: 0 4px 4px 0;
+            line-height: 1.3;
+            min-height: 40px;
+        }
+
+        .chart-box {
+            width: 100%;
+            height: 200px;
+        }
+
+        .terminal-container {
+            grid-column: 1 / -1;
+            background-color: #010409;
+            border: 1px solid var(--panel-border);
+            border-radius: 8px;
+            padding: 14px;
+            height: 200px;
+            overflow-y: auto;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.85rem;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.8);
+        }
+
+        .terminal-header {
+            font-weight: bold;
+            color: var(--text-main);
+            border-bottom: 1px solid var(--panel-border);
+            padding-bottom: 8px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .log-entry { margin-bottom: 4px; line-height: 1.4; }
+        .log-time { color: var(--accent-blue); }
+        .log-warn { color: var(--accent-yellow); font-weight: bold; }
+        .log-crit { color: var(--accent-red); font-weight: bold; }
+        .log-info { color: var(--accent-green); }
+
+        .clear-btn {
+            background-color: #21262d;
+            color: var(--text-main);
+            border: 1px solid var(--panel-border);
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+
+        .clear-btn:hover {
+            background-color: #30363d;
+            color: #fff;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>🛰️ MARTIAN FLEET MISSION CONTROL</h1>
+        <div class="status-container">
+            <span id="agent-status" style="color: var(--text-muted); font-size: 0.9rem;">Agent: AWAITING DATA</span>
+            <span id="sync-status" class="sync-badge">● LIVE STREAMING</span>
+            <button class="clear-btn" onclick="resetTelemetry()">Flush Logs & Reset Agent</button>
+        </div>
+    </div>
+
+    <div class="grid-container">
+
+        <!-- MODEL 1 -->
+        <div class="card">
+            <div class="card-header" style="color: var(--accent-blue);">1. Altitude Trajectory</div>
+            <div class="card-desc">Tracks the fleet's average $1.0\times - 1.6\times$ orbital height multipliers. Highlights the network's active vertical evasion maneuvers.</div>
+            <div id="chart-model-1" class="chart-box"></div>
+        </div>
+
+        <!-- MODEL 2 -->
+        <div class="card">
+            <div class="card-header" style="color: var(--accent-yellow);">2. Threat Proximity (&Delta;r)</div>
+            <div class="card-desc">Measures real-time distance to the closest debris entity. The red dashed line denotes the critical collision threshold ($0.35$).</div>
+            <div id="chart-model-2" class="chart-box"></div>
+        </div>
+
+        <!-- MODEL 3 -->
+        <div class="card">
+            <div class="card-header" style="color: var(--accent-green);">3. Avoidance Efficiency</div>
+            <div class="card-desc">Comparative tally of impact events. Contrasts the baseline collision rate (AI OFF) against the mitigated rate (AI ON).</div>
+            <div id="chart-model-3" class="chart-box"></div>
+        </div>
+
+        <!-- MODEL 4 -->
+        <div class="card">
+            <div class="card-header" style="color: var(--accent-red);">4. Shield Interventions</div>
+            <div class="card-desc">Logs hard override frequencies. Triggers when deterministic safety protocols veto an unsafe action proposed by the neural policy.</div>
+            <div id="chart-model-4" class="chart-box"></div>
+        </div>
+
+        <!-- MODEL 5 -->
+        <div class="card">
+            <div class="card-header" style="color: #a371f7;">5. RL Policy Exploration</div>
+            <div class="card-desc">Displays the $\epsilon$-greedy exploration curve. High values = random learning phase; low values = exploiting learned Q-values.</div>
+            <div id="chart-model-5" class="chart-box"></div>
+        </div>
+
+        <!-- MODEL 6 -->
+        <div class="card">
+            <div class="card-header" style="color: #f0883e;">6. Cumulative &Delta;V Fuel Usage</div>
+            <div class="card-desc">Estimates thruster fuel consumption. Adds penalty points for active adjustments to discourage unnecessary drifting.</div>
+            <div id="chart-model-6" class="chart-box"></div>
+        </div>
+
+        <!-- MODEL 7 -->
+        <div class="card">
+            <div class="card-header" style="color: #c9d1d9;">7. Constellation Risk Matrix</div>
+            <div class="card-desc">Categorizes the instantaneous environmental threat levels for all 8 satellites into SAFE, CAUTION, or DANGER zones.</div>
+            <div id="chart-model-7" class="chart-box"></div>
+        </div>
+
+        <!-- MODEL 8 -->
+        <div class="card">
+            <div class="card-header" style="color: #39c5cf;">8. System Sync & Health</div>
+            <div class="card-desc">Monitors API synchronization latency (ms). Spikes indicate backend processing delays in Q-table updates or multi-agent step calculation.</div>
+            <div id="chart-model-8" class="chart-box"></div>
+        </div>
+
+        <!-- DECISION LOG / TERMINAL -->
+        <div class="terminal-container">
+            <div class="terminal-header">
+                <span>&gt;_ LIVE DECISION & EVENT LOGS</span>
+                <span id="log-counter" style="color: var(--text-muted); font-size: 0.8rem;">Events: 0</span>
+            </div>
+            <div id="terminal-output">
+                <div class="log-entry"><span class="log-time">[SYSTEM]</span> Initializing telemetry link...</div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const API_BASE = "http://127.0.0.1:8000";
+        const layoutBase = {
+            margin: { l: 30, r: 15, t: 10, b: 20 },
+            paper_bgcolor: '#0d1117',
+            plot_bgcolor: '#0d1117',
+            font: { color: '#8b949e', size: 9 },
+            xaxis: { showgrid: false, zeroline: false },
+            yaxis: { showgrid: true, gridcolor: '#21262d', zeroline: false },
+            showlegend: false
+        };
+
+        // Initialize Plotly charts
+        Plotly.newPlot('chart-model-1', [{ y: [], type: 'scatter', mode: 'lines', line: { color: '#58a6ff' } }], layoutBase);
+        Plotly.newPlot('chart-model-2', [{ y: [], type: 'scatter', mode: 'lines', line: { color: '#d29922' } }], layoutBase);
+        Plotly.newPlot('chart-model-3', [{ x: ['AI OFF', 'AI ON'], y: [0, 0], type: 'bar', marker: { color: ['#f85149', '#3fb950'] } }], layoutBase);
+        Plotly.newPlot('chart-model-4', [{ y: [], type: 'scatter', mode: 'lines+markers', line: { color: '#f85149' } }], layoutBase);
+        Plotly.newPlot('chart-model-5', [{ y: [], type: 'scatter', mode: 'lines', line: { color: '#a371f7' } }], layoutBase);
+        Plotly.newPlot('chart-model-6', [{ y: [], type: 'scatter', mode: 'lines', line: { color: '#f0883e' } }], layoutBase);
+        Plotly.newPlot('chart-model-7', [{ values: [100, 0, 0], labels: ['SAFE', 'CAUTION', 'DANGER'], type: 'pie', marker: { colors: ['#3fb950', '#d29922', '#f85149'] }, hole: .4 }], { ...layoutBase, margin: { l: 10, r: 10, t: 10, b: 10 } });
+        Plotly.newPlot('chart-model-8', [{ y: [], type: 'scatter', mode: 'lines', line: { color: '#39c5cf' } }], layoutBase);
+
+        let lastShieldCount = 0;
+        let lastOffHits = 0;
+        let lastOnHits = 0;
+        let totalEvents = 0;
+
+        function appendLog(htmlContent) {
+            const terminal = document.getElementById('terminal-output');
+            const entry = document.createElement('div');
+            entry.innerHTML = htmlContent;
+            terminal.prepend(entry);
+            
+            totalEvents++;
+            document.getElementById('log-counter').innerText = `Events: ${totalEvents}`;
+
+            // Keep log from growing infinitely
+            if (terminal.children.length > 100) {
+                terminal.removeChild(terminal.lastChild);
+            }
+        }
+
+        async function fetchTelemetryData() {
+            try {
+                const res = await fetch(`${API_BASE}/telemetry-live`);
+                const data = await res.json();
+
+                if (!data.times || data.times.length === 0) return;
+
+                const lastIdx = data.times.length - 1;
+                const currentDist = data.min_distances[lastIdx];
+                const currentShields = data.shielded_counts[lastIdx];
+                const currentOffHits = data.off_collisions[lastIdx];
+                const currentOnHits = data.on_collisions[lastIdx];
+                const currentEps = data.epsilons[lastIdx];
+                const timeStamp = new Date().toISOString().split('T')[1].slice(0,-1);
+
+                // Update Plotly Charts
+                Plotly.react('chart-model-1', [{ x: data.times, y: data.multipliers, type: 'scatter', mode: 'lines', line: { color: '#58a6ff' } }], layoutBase);
+                Plotly.react('chart-model-2', [
+                    { x: data.times, y: data.min_distances, type: 'scatter', mode: 'lines', line: { color: '#d29922' } },
+                    { x: [data.times[0], data.times[lastIdx]], y: [0.35, 0.35], type: 'scatter', mode: 'lines', line: { color: '#f85149', dash: 'dash' } }
+                ], layoutBase);
+                Plotly.react('chart-model-3', [{ x: ['AI OFF', 'AI ON'], y: [currentOffHits || 0, currentOnHits || 0], type: 'bar', marker: { color: ['#f85149', '#3fb950'] } }], layoutBase);
+                Plotly.react('chart-model-4', [{ x: data.times, y: data.shielded_counts, type: 'scatter', mode: 'lines+markers', line: { color: '#f85149' } }], layoutBase);
+                Plotly.react('chart-model-5', [{ x: data.times, y: data.epsilons, type: 'scatter', mode: 'lines', line: { color: '#a371f7' } }], layoutBase);
+                Plotly.react('chart-model-6', [{ x: data.times, y: data.fuel_expenditure, type: 'scatter', mode: 'lines', line: { color: '#f0883e' } }], layoutBase);
+                
+                const caution = data.num_caution[lastIdx] || 0;
+                const danger = data.num_danger[lastIdx] || 0;
+                const safe = Math.max(0, 8 - (caution + danger));
+                Plotly.react('chart-model-7', [{ values: [safe, caution, danger], labels: ['SAFE', 'CAUTION', 'DANGER'], type: 'pie', marker: { colors: ['#3fb950', '#d29922', '#f85149'] }, hole: .4 }], { ...layoutBase, margin: { l: 10, r: 10, t: 10, b: 10 } });
+                Plotly.react('chart-model-8', [{ x: data.times, y: data.latencies, type: 'scatter', mode: 'lines', line: { color: '#39c5cf' } }], layoutBase);
+
+                // Parse conditions for Terminal Logs
+                if (currentDist < 0.35) {
+                    appendLog(`<div class="log-entry"><span class="log-time">[${timeStamp}]</span> <span class="log-crit">ALERT: Proximity breach! Threat distance at ${currentDist.toFixed(3)} units.</span></div>`);
+                }
+
+                if (currentShields > lastShieldCount) {
+                    appendLog(`<div class="log-entry"><span class="log-time">[${timeStamp}]</span> <span class="log-warn">ACTION DENIED: Symbolic safety protocol overrode unsafe neural policy decision.</span></div>`);
+                    lastShieldCount = currentShields;
+                }
+
+                if (currentOnHits > lastOnHits) {
+                    appendLog(`<div class="log-entry"><span class="log-time">[${timeStamp}]</span> <span class="log-crit">IMPACT DETECTED: Active AI failed to evade debris.</span></div>`);
+                    lastOnHits = currentOnHits;
+                }
+
+                if (currentOffHits > lastOffHits) {
+                    appendLog(`<div class="log-entry"><span class="log-time">[${timeStamp}]</span> <span class="log-warn">BASELINE IMPACT: Debris collision on unmanaged satellite trajectory.</span></div>`);
+                    lastOffHits = currentOffHits;
+                }
+
+                // General periodic status log (approx every 15 ticks)
+                if (data.times.length % 10 === 0) {
+                    appendLog(`<div class="log-entry"><span class="log-time">[${timeStamp}]</span> <span class="log-info">SYSTEM OK.</span> Avg Altitude: ${data.multipliers[lastIdx].toFixed(2)}x | &epsilon;: ${currentEps.toFixed(3)} | Latency: ${data.latencies[lastIdx].toFixed(1)}ms</div>`);
+                }
+
+                // Update UI Status Bars
+                document.getElementById('sync-status').innerText = "● LIVE STREAMING";
+                document.getElementById('sync-status').style.borderColor = "#3fb950";
+                
+                let agentState = currentEps > 0.1 ? "EXPLORING (TRAINING)" : "EXPLOITING (ACTIVE)";
+                document.getElementById('agent-status').innerText = `State: ${agentState} | &epsilon; = ${currentEps.toFixed(3)}`;
+
+            } catch (err) {
+                document.getElementById('sync-status').innerText = "○ DISCONNECTED";
+                document.getElementById('sync-status').style.borderColor = "#f85149";
+                document.getElementById('agent-status').innerText = `State: OFFLINE`;
+            }
+        }
+
+        async function resetTelemetry() {
+            await fetch(`${API_BASE}/rl-reset`);
+            location.reload();
+        }
+
+        // Poll API every 1.5 seconds
+        setInterval(fetchTelemetryData, 1500);
+    </script>
+</body>
+</html>

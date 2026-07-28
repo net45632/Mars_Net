@@ -4,8 +4,461 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Martian Satellite Simulation</title>
-    <link rel="stylesheet" href="./style.css">
     <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Courier New', Courier, monospace;
+            background-color: #050508;
+            color: #e0e0e8;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .sidebar {
+            width: 320px;
+            background: linear-gradient(180deg, #0d1117 0%, #161b22 100%);
+            border-right: 2px solid #1f6feb;
+            padding: 25px;
+            box-shadow: 5px 0 25px rgba(0,0,0,0.7);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            z-index: 10;
+            box-sizing: border-box;
+            overflow-y: auto;
+        }
+
+        h2 {
+            margin-top: 0;
+            font-size: 1.4rem;
+            color: #58a6ff;
+            letter-spacing: 2px;
+            border-bottom: 1px solid #30363d;
+            padding-bottom: 10px;
+        }
+
+        .status {
+            background-color: rgba(56, 139, 253, 0.1);
+            padding: 10px;
+            border-left: 4px solid #388bfd;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            line-height: 1.4;
+        }
+
+        label {
+            font-size: 0.85rem;
+            color: #8b949e;
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+
+        input[type=range] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            background: #21262d;
+            height: 6px;
+            border-radius: 3px;
+            outline: none;
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #58a6ff;
+            cursor: pointer;
+            box-shadow: 0 0 8px #58a6ff;
+        }
+
+        button {
+            background-color: #238636;
+            color: #ffffff;
+            border: 1px solid #2ea44f;
+            padding: 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 0.9rem;
+            transition: all 0.2s ease;
+        }
+
+        button:hover {
+            background-color: #2ea44f;
+            box-shadow: 0 0 15px rgba(46, 164, 79, 0.6);
+        }
+
+        #plot-container {
+            flex-grow: 1;
+            height: 100%;
+            width: calc(100% - 320px);
+            background-color: #000000;
+        }
+
+        /* --- Tabs --- */
+        .tabs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .tab-btn {
+            flex: 1 1 auto;
+            min-width: 70px;
+            background-color: #161b22;
+            color: #8b949e;
+            border: 1px solid #30363d;
+            padding: 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.8rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.2s ease;
+        }
+
+        .tab-btn:hover {
+            background-color: #21262d;
+            box-shadow: none;
+        }
+
+        .tab-btn.active {
+            background-color: #1f6feb;
+            color: #ffffff;
+            border-color: #58a6ff;
+        }
+
+        .tab-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .tab-panel.hidden {
+            display: none;
+        }
+
+        /* --- AI toggle button --- */
+        .ai-btn {
+            background-color: #238636;
+            border: 1px solid #2ea44f;
+        }
+
+        .ai-btn.off {
+            background-color: #8b2020;
+            border: 1px solid #da3633;
+        }
+
+        .ai-btn.off:hover {
+            background-color: #da3633;
+            box-shadow: 0 0 15px rgba(218, 54, 51, 0.6);
+        }
+
+        /* --- Collisions Tab Widgets --- */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .stat-card {
+            background-color: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            padding: 10px;
+            text-align: center;
+        }
+
+        .stat-card.danger {
+            border-color: #f85149;
+            background-color: rgba(248, 81, 73, 0.05);
+        }
+
+        .stat-card.success {
+            border-color: #3fb950;
+            background-color: rgba(63, 185, 80, 0.05);
+        }
+
+        .stat-title {
+            font-size: 0.7rem;
+            margin-bottom: 4px;
+            color: #8b949e;
+            text-transform: uppercase;
+        }
+
+        .stat-count {
+            font-size: 1.6rem;
+            font-weight: bold;
+            color: #e0e0e8;
+        }
+
+        .stat-rate {
+            font-size: 0.75rem;
+            color: #8b949e;
+            margin-top: 2px;
+        }
+
+        .reduction-box {
+            background-color: rgba(46, 164, 79, 0.1);
+            border-left: 4px solid #2ea44f;
+            border-radius: 4px;
+            padding: 10px;
+            text-align: center;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #8b949e;
+        }
+
+        .reduction-box span {
+            display: block;
+            font-size: 1.8rem;
+            color: #3fb950;
+            font-weight: bold;
+            letter-spacing: normal;
+            text-transform: none;
+            margin-top: 4px;
+        }
+
+        .collision-log {
+            background-color: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 4px;
+            padding: 8px;
+            height: 220px;
+            overflow-y: auto;
+            font-size: 0.72rem;
+            line-height: 1.5;
+            color: #8b949e;
+        }
+
+        .collision-log div {
+            border-bottom: 1px solid #21262d;
+            padding: 3px 0;
+        }
+
+        .collision-log:empty::before {
+            content: "No collisions recorded. Simulation operating safely.";
+            color: #484f58;
+            font-style: italic;
+        }
+
+        /* --- Telemetry Tab Widgets --- */
+        .telemetry-chart-wrap {
+            height: 140px;
+            background-color: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .sat-table-wrap {
+            max-height: 180px;
+            overflow-y: auto;
+            border: 1px solid #30363d;
+            border-radius: 4px;
+        }
+
+        .sat-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.75rem;
+            text-align: left;
+        }
+
+        .sat-table th {
+            background-color: #161b22;
+            color: #8b949e;
+            padding: 6px 8px;
+            position: sticky;
+            top: 0;
+            border-bottom: 1px solid #30363d;
+        }
+
+        .sat-table td {
+            padding: 5px 8px;
+            border-bottom: 1px solid #21262d;
+            color: #c9d1d9;
+        }
+
+        .sat-table tr:hover td {
+            background-color: #161b22;
+            cursor: pointer;
+        }
+
+        .badge-safe {
+            color: #3fb950;
+            background: rgba(63, 185, 80, 0.1);
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+
+        .badge-caution {
+            color: #d29922;
+            background: rgba(210, 153, 34, 0.1);
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+
+        .badge-danger {
+            color: #f85149;
+            background: rgba(248, 81, 73, 0.1);
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+
+        .report-chart-wrap {
+            background-color: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 4px;
+            overflow: hidden;
+            text-align: center;
+        }
+
+        .report-chart-img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .report-chart-fallback {
+            padding: 20px;
+            color: #8b949e;
+            font-size: 0.75rem;
+            font-style: italic;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .download-links {
+            display: flex;
+            gap: 8px;
+        }
+
+        .download-link {
+            flex: 1;
+            text-align: center;
+            text-decoration: none;
+            font-size: 0.75rem;
+            font-weight: bold;
+            padding: 10px;
+            border-radius: 6px;
+            box-sizing: border-box;
+        }
+
+        /* --- Assistant tab --- */
+        .chat-messages {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            height: 320px;
+            overflow-y: auto;
+            background-color: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 4px;
+            padding: 10px;
+        }
+
+        .chat-messages:empty::before {
+            content: "Ask me anything about the simulation — the satellites, Mars, the AI toggle, or what's happening right now.";
+            color: #6e7681;
+            font-style: italic;
+            font-size: 0.78rem;
+        }
+
+        .chat-bubble {
+            max-width: 85%;
+            padding: 8px 10px;
+            border-radius: 8px;
+            font-size: 0.78rem;
+            line-height: 1.4;
+            word-wrap: break-word;
+            white-space: pre-wrap;
+        }
+
+        .chat-bubble.user {
+            align-self: flex-end;
+            background-color: #1f6feb;
+            color: #ffffff;
+        }
+
+        .chat-bubble.assistant {
+            align-self: flex-start;
+            background-color: #21262d;
+            color: #c9d1d9;
+        }
+
+        .chat-bubble.assistant.error {
+            background-color: rgba(248, 81, 73, 0.15);
+            color: #f85149;
+            border: 1px solid #f85149;
+        }
+
+        .chat-bubble.assistant.pending {
+            color: #8b949e;
+            font-style: italic;
+        }
+
+        .chat-input-row {
+            display: flex;
+            gap: 8px;
+        }
+
+        .chat-input {
+            flex: 1;
+            background-color: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 4px;
+            color: #c9d1d9;
+            padding: 8px 10px;
+            font-size: 0.8rem;
+            outline: none;
+        }
+
+        .chat-input:focus {
+            border-color: #58a6ff;
+        }
+
+        .chat-send-btn {
+            padding: 8px 14px;
+            font-size: 0.8rem;
+        }
+
+        .secondary-btn {
+            background-color: #21262d;
+            color: #c9d1d9;
+            border: 1px solid #30363d;
+        }
+
+        .secondary-btn:hover {
+            background-color: #30363d;
+            border-color: #8b949e;
+            box-shadow: none;
+        }
+
+        .q-table-view {
+            background-color: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 4px;
+            padding: 8px;
+            font-size: 0.7rem;
+            font-family: monospace;
+            max-height: 150px;
+            overflow-y: auto;
+            color: #8b949e;
+            white-space: pre-wrap;
+        }
+    </style>
 </head>
 <body>
     <div class="sidebar">
@@ -15,6 +468,7 @@
             <button id="tab-btn-control" class="tab-btn active">Control</button>
             <button id="tab-btn-collisions" class="tab-btn">Collisions</button>
             <button id="tab-btn-telemetry" class="tab-btn">Telemetry</button>
+            <button id="tab-btn-assistant" class="tab-btn">Assistant</button>
         </div>
 
         <div id="tab-panel-control" class="tab-panel">
@@ -26,44 +480,44 @@
             <input type="range" id="speed" min="0.1" max="3.0" step="0.1" value="1.0">
 
             <button id="toggle-sim">⏸ Pause Simulation</button>
-
-            <button id="ai-toggle-btn" class="ai-btn off">🤖 AI: OFF</button>
-
-            <button id="reset-view-btn" class="secondary-btn">🔭 Reset View</button>
+            <button id="ai-toggle-btn" class="ai-btn off">🤖 AI Defense: OFF</button>
+            <button id="reset-view-btn" class="secondary-btn">Reset Camera View</button>
         </div>
 
         <div id="tab-panel-collisions" class="tab-panel hidden">
-            <div class="collision-stats">
-                <div class="stat-card off">
-                    <label>AI OFF</label>
-                    <div class="stat-count" id="off-collision-count">0</div>
-                    <div class="stat-rate" id="off-collision-rate">0.0/min</div>
+            <div class="stats-grid">
+                <div class="stat-card danger">
+                    <div class="stat-title">AI OFF Hits</div>
+                    <div id="off-collision-count" class="stat-count">0</div>
+                    <div id="off-collision-rate" class="stat-rate">0.0 / min</div>
                 </div>
-                <div class="stat-card on">
-                    <label>AI ON</label>
-                    <div class="stat-count" id="on-collision-count">0</div>
-                    <div class="stat-rate" id="on-collision-rate">0.0/min</div>
+                <div class="stat-card success">
+                    <div class="stat-title">AI ON Hits</div>
+                    <div id="on-collision-count" class="stat-count">0</div>
+                    <div id="on-collision-rate" class="stat-rate">0.0 / min</div>
                 </div>
             </div>
 
             <div class="reduction-box">
-                Collision Rate Reduction
-                <span id="collision-reduction">—</span>
+                Collision Reduction
+                <span id="collision-reduction">0%</span>
             </div>
 
-            <label>Event Log</label>
+            <label>Live Collision &amp; Evasion Log</label>
             <div id="collision-log" class="collision-log"></div>
         </div>
 
         <div id="tab-panel-telemetry" class="tab-panel hidden">
-            <label>Orbit Multiplier (last 100 samples)</label>
-            <div id="telemetry-chart" class="telemetry-chart"></div>
+            <label>Orbit Multiplier History</label>
+            <div class="telemetry-chart-wrap">
+                <div id="telemetry-chart" style="width:100%;height:100%;"></div>
+            </div>
 
-            <label>Satellite Status</label>
+            <label>Satellite Status Matrix</label>
             <div class="sat-table-wrap">
                 <table class="sat-table">
                     <thead>
-                        <tr><th>ID</th><th>Radius</th><th>Nearest Threat</th><th>Status</th></tr>
+                        <tr><th>Sat</th><th>Orbit</th><th>Nearest Threat</th><th>Status</th></tr>
                     </thead>
                     <tbody id="sat-table-body"></tbody>
                 </table>
@@ -83,8 +537,898 @@
                 <a href="http://127.0.0.1:8000/download-sim-log" class="secondary-btn download-link" download>⬇ Sim Log CSV</a>
             </div>
         </div>
+
+        <div id="tab-panel-assistant" class="tab-panel hidden">
+            <div id="chat-messages" class="chat-messages"></div>
+            <div class="chat-input-row">
+                <input type="text" id="chat-input" class="chat-input" placeholder="Ask about the simulation...">
+                <button id="chat-send-btn" class="secondary-btn chat-send-btn">Send</button>
+            </div>
+
+            <label>RL Agent Q-Table (State / Action Values)</label>
+            <div id="q-table-view" class="q-table-view">Loading Q-table...</div>
+            <button id="rl-reset-btn" class="secondary-btn">Reset RL Agent Memory</button>
+        </div>
     </div>
+
     <div id="plot-container"></div>
-    <script src="./script.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+
+            if (typeof Plotly === 'undefined') {
+              console.error('Plotly failed to load — check your <script src="..."> tag/order.');
+              return;
+            }
+          
+            const plotDiv = document.getElementById('plot-container');
+            if (!plotDiv) {
+              console.error('plot-container div not found — check the id matches your HTML.');
+              return;
+            }
+          
+            const numSats = 8;
+            const numPlanes = 3;
+            let timeStep = 0;
+            let isAnimating = true;
+            let aiEnabled = false; 
+          
+            const altVal = document.getElementById('alt-val');
+            const speedSlider = document.getElementById('speed');
+            const speedVal = document.getElementById('speed-val');
+            const toggleBtn = document.getElementById('toggle-sim');
+            const statusText = document.getElementById('status-text');
+          
+            const aiToggleBtn = document.getElementById('ai-toggle-btn');
+            const resetViewBtn = document.getElementById('reset-view-btn');
+            const tabBtnControl = document.getElementById('tab-btn-control');
+            const tabBtnCollisions = document.getElementById('tab-btn-collisions');
+            const tabBtnTelemetry = document.getElementById('tab-btn-telemetry');
+            const tabBtnAssistant = document.getElementById('tab-btn-assistant');
+            const tabPanelControl = document.getElementById('tab-panel-control');
+            const tabPanelCollisions = document.getElementById('tab-panel-collisions');
+            const tabPanelTelemetry = document.getElementById('tab-panel-telemetry');
+            const tabPanelAssistant = document.getElementById('tab-panel-assistant');
+            const chatMessagesEl = document.getElementById('chat-messages');
+            const chatInputEl = document.getElementById('chat-input');
+            const chatSendBtn = document.getElementById('chat-send-btn');
+            const telemetryChartEl = document.getElementById('telemetry-chart');
+            const satTableBodyEl = document.getElementById('sat-table-body');
+            const qTableViewEl = document.getElementById('q-table-view');
+            const decisionLogEl = document.getElementById('decision-log');
+            const reportChartImg = document.getElementById('report-chart-img');
+            const reportChartFallback = document.getElementById('report-chart-fallback');
+            const offCountEl = document.getElementById('off-collision-count');
+            const onCountEl = document.getElementById('on-collision-count');
+            const offRateEl = document.getElementById('off-collision-rate');
+            const onRateEl = document.getElementById('on-collision-rate');
+            const reductionEl = document.getElementById('collision-reduction');
+            const collisionLogEl = document.getElementById('collision-log');
+          
+            const planeRadiiBase = [1.6, 2.4, 3.2];
+            const inclinations = [0.2, 0.5, 0.78];
+            const nodes = [0.5, 2.1, 4.5];
+          
+            // --- 1. STARS GENERATOR ---
+            function buildStars() {
+                let numStars = 400;
+                let x = [], y = [], z = [];
+                let colors = [];
+                const starColors = ['#ffffff', '#e0f2fe', '#f3e8ff', '#ffffff'];
+          
+                const rMin = 3.0, rMax = 14.0;
+                for(let i=0; i<numStars; i++) {
+                    let r = Math.cbrt(Math.random() * (Math.pow(rMax, 3) - Math.pow(rMin, 3)) + Math.pow(rMin, 3));
+                    let theta = Math.random() * 2 * Math.PI;
+                    let phi = Math.random() * Math.PI;
+          
+                    x.push(r * Math.sin(phi) * Math.cos(theta));
+                    y.push(r * Math.sin(phi) * Math.sin(theta));
+                    z.push(r * Math.cos(phi));
+                    colors.push(starColors[Math.floor(Math.random() * starColors.length)]);
+                }
+                return {
+                    type: 'scatter3d', mode: 'markers', x: x, y: y, z: z,
+                    marker: { size: 1.5, color: colors, opacity: 0.8 },
+                    showlegend: false, hoverinfo: 'none'
+                };
+            }
+          
+            // --- 2. MARS GENERATOR ---
+            const marsU = [];
+            const marsV = [];
+            for (let i = 0; i <= 30; i++) marsU.push(i * 2 * Math.PI / 30);
+            for (let i = 0; i <= 30; i++) marsV.push(i * Math.PI / 30);
+          
+            function marsTexture(u, v) {
+                return Math.sin(3*u + 1.3*v) * 0.5 + Math.sin(5*u - 2.1*v) * 0.3 + Math.sin(1.7*u + 4*v) * 0.2;
+            }
+          
+            function buildMarsGeometry() {
+                let x = [], y = [], z = [];
+                for (let i = 0; i <= 30; i++) {
+                    let x_row = [], y_row = [], z_row = [];
+                    for (let j = 0; j <= 30; j++) {
+                        x_row.push(Math.cos(marsU[j]) * Math.sin(marsV[i]));
+                        y_row.push(Math.sin(marsU[j]) * Math.sin(marsV[i]));
+                        z_row.push(Math.cos(marsV[i]));
+                    }
+                    x.push(x_row); y.push(y_row); z.push(z_row);
+                }
+                return { x: x, y: y, z: z };
+            }
+          
+            function buildMarsColor(rotationAngle) {
+                let color = [];
+                for (let i = 0; i <= 30; i++) {
+                    let row = [];
+                    for (let j = 0; j <= 30; j++) {
+                        let base = Math.cos(marsV[i]);
+                        let feature = marsTexture(marsU[j] - rotationAngle, marsV[i]) * 0.55;
+                        row.push(base + feature);
+                    }
+                    color.push(row);
+                }
+                return color;
+            }
+          
+            const MARS_ROTATION_SPEED = 0.01;
+          
+            // --- 3. DECORATIVE DEBRIS ---
+            function buildDebris(density) {
+                let numDebris = Math.floor(150 * density);
+                let x = [], y = [], z = [];
+                for(let i=0; i<numDebris; i++) {
+                    let r = 1.2 + Math.random() * 2.3;
+                    let theta = Math.random() * 2 * Math.PI;
+                    let phi = Math.random() * Math.PI;
+                    x.push(r * Math.sin(phi) * Math.cos(theta));
+                    y.push(r * Math.sin(phi) * Math.sin(theta));
+                    z.push(r * Math.cos(phi));
+                }
+                return {
+                    type: 'scatter3d', mode: 'markers', x: x, y: y, z: z,
+                    marker: { size: 1.5, color: '#ff7b72', opacity: 0.25 },
+                    showlegend: false, hoverinfo: 'none'
+                };
+            }
+          
+            // --- 4. SATELLITE POSITION CALCULATION ---
+            let satThetas = new Array(numSats).fill(0).map((_, i) => {
+                let spacingOffset = (2 * Math.PI / Math.max(1, Math.floor(numSats / numPlanes))) * Math.floor(i / numPlanes);
+                return spacingOffset;
+            });
+          
+            function advanceSatelliteOrbits(altitudeMults, dtSim) {
+                for (let i = 0; i < numSats; i++) {
+                    let pIdx = i % numPlanes;
+                    let mult = (altitudeMults && altitudeMults[i] !== undefined) ? altitudeMults[i] : 1.0;
+                    let r = Math.max(planeRadiiBase[pIdx] * mult, 1.4);
+                    let angularSpeed = Math.sqrt(10.0 / Math.pow(r, 3));
+                    satThetas[i] = (satThetas[i] + angularSpeed * dtSim * 0.15) % (2 * Math.PI);
+                }
+            }
+          
+            function getSatellites(altitudeMults) {
+                let x = [], y = [], z = [];
+                for (let i = 0; i < numSats; i++) {
+                    let pIdx = i % numPlanes;
+                    let mult = (altitudeMults && altitudeMults[i] !== undefined) ? altitudeMults[i] : 1.0;
+                    let r = Math.max(planeRadiiBase[pIdx] * mult, 1.4);
+                    let inc = inclinations[pIdx];
+                    let node = nodes[pIdx];
+          
+                    let currentTheta = satThetas[i];
+                    x.push(r * (Math.cos(currentTheta) * Math.cos(node) - Math.sin(currentTheta) * Math.sin(node) * Math.cos(inc)));
+                    y.push(r * (Math.cos(currentTheta) * Math.sin(node) + Math.sin(currentTheta) * Math.cos(node) * Math.cos(inc)));
+                    z.push(r * (Math.sin(currentTheta) * Math.sin(inc)));
+                }
+                return { x: x, y: y, z: z };
+            }
+          
+            // --- 5. THREAT DEBRIS ---
+            const THREATS_PER_SAT = 2;
+            const COLLISION_RADIUS = 0.35;
+            const RESPAWN_MIN_OFFSET = 0.15;
+            const RESPAWN_MAX_OFFSET = 0.55;
+          
+            function randomOffset() {
+                let mag = RESPAWN_MIN_OFFSET + Math.random() * (RESPAWN_MAX_OFFSET - RESPAWN_MIN_OFFSET);
+                return Math.random() < 0.5 ? -mag : mag;
+            }
+          
+            function makeThreat(satIdx, id) {
+                let pIdx = satIdx % numPlanes;
+                let spacingOffset = (2 * Math.PI / Math.max(1, Math.floor(numSats / numPlanes))) * Math.floor(satIdx / numPlanes);
+                return {
+                    id: id,
+                    satIdx: satIdx,
+                    pIdx: pIdx,
+                    radius: Math.max(planeRadiiBase[pIdx] + randomOffset(), 1.1),
+                    phase: spacingOffset + Math.random() * 2 * Math.PI,
+                    colliding: false,
+                    eccentricity: 0.15 + Math.random() * 0.2,
+                    direction: Math.random() < 0.3 ? -1 : 1
+                };
+            }
+          
+            let threatState = [];
+            for (let s = 0; s < numSats; s++) {
+                for (let k = 0; k < THREATS_PER_SAT; k++) {
+                    threatState.push(makeThreat(s, 'DBR-' + String(s) + String(k)));
+                }
+            }
+          
+            function getThreatPositions(t) {
+                let x = [], y = [], z = [];
+                for (let i = 0; i < threatState.length; i++) {
+                    let th = threatState[i];
+                    let inc = inclinations[th.pIdx];
+                    let node = nodes[th.pIdx];
+                    
+                    let angularSpeed = Math.sqrt(10.0 / Math.pow(th.radius, 3)) * (th.direction || 1);
+                    let currentTheta = th.phase + (angularSpeed * t * 0.15);
+                    
+                    let r = th.radius * (1 - (th.eccentricity || 0) * Math.cos(currentTheta));
+                    
+                    x.push(r * (Math.cos(currentTheta) * Math.cos(node) - Math.sin(currentTheta) * Math.sin(node) * Math.cos(inc)));
+                    y.push(r * (Math.cos(currentTheta) * Math.sin(node) + Math.sin(currentTheta) * Math.cos(node) * Math.cos(inc)));
+                    z.push(r * (Math.sin(currentTheta) * Math.sin(inc)));
+                }
+                return { x: x, y: y, z: z };
+            }
+          
+            // --- 5b. MARS MOONS ---
+            const marsMoons = [
+                { name: 'Phobos', radius: 1.7, inc: 0.05, node: 0.0, phase: 0.0, size: 50.5, color: '#9c9284' },
+                { name: 'Deimos', radius: 2.3, inc: 0.08, node: 1.2, phase: 2.1, size: 40.8, color: '#c8c2b6' }
+            ];
+          
+            function getMoonPositions(t) {
+                let x = [], y = [], z = [];
+                for (let i = 0; i < marsMoons.length; i++) {
+                    let m = marsMoons[i];
+                    let angularSpeed = Math.sqrt(10.0 / Math.pow(m.radius, 3));
+                    let theta = m.phase + angularSpeed * t * 0.15;
+                    x.push(m.radius * (Math.cos(theta) * Math.cos(m.node) - Math.sin(theta) * Math.sin(m.node) * Math.cos(m.inc)));
+                    y.push(m.radius * (Math.cos(theta) * Math.sin(m.node) + Math.sin(theta) * Math.cos(m.node) * Math.cos(m.inc)));
+                    z.push(m.radius * (Math.sin(theta) * Math.sin(m.inc)));
+                }
+                return { x: x, y: y, z: z };
+            }
+          
+            // --- 6b. TELEMETRY DASHBOARD ---
+            const TELEMETRY_WINDOW = 100;
+            let telemetryTimes = [];
+            let telemetryValues = [];
+          
+            const CAUTION_DISTANCE = 0.9;
+            let satStatusState = new Array(numSats).fill('SAFE');
+            let lastLoggedMultiplier = 1.0;
+          
+            function logDecision(text) {
+                if (!decisionLogEl) return;
+                let timeStr = '[' + String(Math.floor(timeStep)).padStart(3, '0') + 's] ';
+                let div = document.createElement('div');
+                div.textContent = timeStr + text;
+                decisionLogEl.appendChild(div);
+                decisionLogEl.scrollTop = decisionLogEl.scrollHeight;
+            }
+          
+            function getNearestThreatDistances(satX, satY, satZ, threatX, threatY, threatZ) {
+                let nearest = new Array(numSats).fill(Infinity);
+                for (let i = 0; i < threatState.length; i++) {
+                    let th = threatState[i];
+                    let dx = satX[th.satIdx] - threatX[i];
+                    let dy = satY[th.satIdx] - threatY[i];
+                    let dz = satZ[th.satIdx] - threatZ[i];
+                    let dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
+                    if (dist < nearest[th.satIdx]) nearest[th.satIdx] = dist;
+                }
+                return nearest;
+            }
+          
+            function getSafeDirections(satX, satY, satZ, threatX, threatY, threatZ) {
+                let nearest = new Array(numSats).fill(Infinity);
+                let safeDirection = new Array(numSats).fill('INCREASE');
+          
+                for (let i = 0; i < threatState.length; i++) {
+                    let th = threatState[i];
+                    let dx = satX[th.satIdx] - threatX[i];
+                    let dy = satY[th.satIdx] - threatY[i];
+                    let dz = satZ[th.satIdx] - threatZ[i];
+                    let dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
+                    if (dist < nearest[th.satIdx]) {
+                        nearest[th.satIdx] = dist;
+                        // Use CURRENT radial distance from Mars for both bodies (not the threat's
+                        // static spawn-time radius), and move AWAY from whichever side it's
+                        // currently on: threat at/above satellite -> DECREASE, threat below -> INCREASE.
+                        let satR = Math.sqrt(satX[th.satIdx]**2 + satY[th.satIdx]**2 + satZ[th.satIdx]**2);
+                        let threatR = Math.sqrt(threatX[i]**2 + threatY[i]**2 + threatZ[i]**2);
+                        safeDirection[th.satIdx] = (threatR >= satR) ? 'DECREASE' : 'INCREASE';
+                    }
+                }
+                return safeDirection;
+            }
+          
+            function sendTelemetrySnapshot() {
+                if (!aiEnabled && timeStep < 2) return;
+                let minDist = Math.min(...latestNearestDist);
+                let numCaution = latestNearestDist.filter(d => d >= COLLISION_RADIUS && d < CAUTION_DISTANCE).length;
+                let numDanger = latestNearestDist.filter(d => d < COLLISION_RADIUS).length;
+          
+                fetch('http://127.0.0.1:8000/telemetry', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        elapsed_seconds: timeStep,
+                        ai_enabled: aiEnabled,
+                        altitude_multiplier: latestMultiplier,
+                        off_collisions: stats.offCollisions,
+                        on_collisions: stats.onCollisions,
+                        off_time_ms: stats.offTimeMs,
+                        on_time_ms: stats.onTimeMs,
+                        min_nearest_distance: minDist,
+                        num_caution: numCaution,
+                        num_danger: numDanger
+                    })
+                }).catch(() => { });
+            }
+            setInterval(sendTelemetrySnapshot, 2000);
+          
+            // --- 6c. COLLISION STATS ---
+            const stats = {
+                offCollisions: 0,
+                onCollisions: 0,
+                offTimeMs: 0,
+                onTimeMs: 0
+            };
+            let satOnCollisions = new Array(numSats).fill(0);
+            let lastReportedSatCollisions = new Array(numSats).fill(0);
+            let lastFrameTime = performance.now();
+          
+            function logCollision(threat, modeLabel) {
+                if (!collisionLogEl) return;
+                let entry = document.createElement('div');
+                let colorClass = aiEnabled ? '#3fb950' : '#f85149';
+                entry.innerHTML = `<span style="color:${colorClass}">[${Math.floor(timeStep)}s] (${modeLabel})</span> Threat <strong style="color:#e0e0e8">${threat.id}</strong> breached safety radius with Sat <strong style="color:#e0e0e8">${threat.satIdx}</strong>`;
+                collisionLogEl.insertBefore(entry, collisionLogEl.firstChild);
+                while (collisionLogEl.children.length > 50) {
+                    collisionLogEl.removeChild(collisionLogEl.lastChild);
+                }
+            }
+          
+            function updateCollisionStats(dt) {
+                if (aiEnabled) {
+                    stats.onTimeMs += dt;
+                } else {
+                    stats.offTimeMs += dt;
+                }
+          
+                let satX = getSatellites(latestSatMultipliers).x;
+                let satY = getSatellites(latestSatMultipliers).y;
+                let satZ = getSatellites(latestSatMultipliers).z;
+                let threatX = getThreatPositions(timeStep).x;
+                let threatY = getThreatPositions(timeStep).y;
+                let threatZ = getThreatPositions(timeStep).z;
+          
+                for (let i = 0; i < threatState.length; i++) {
+                    let th = threatState[i];
+                    let dx = satX[th.satIdx] - threatX[i];
+                    let dy = satY[th.satIdx] - threatY[i];
+                    let dz = satZ[th.satIdx] - threatZ[i];
+                    let dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
+          
+                    if (dist < COLLISION_RADIUS) {
+                        if (!th.colliding) {
+                            th.colliding = true;
+                            if (aiEnabled) {
+                                stats.onCollisions++;
+                                satOnCollisions[th.satIdx]++;
+                                logCollision(th, 'AI ON');
+                            } else {
+                                stats.offCollisions++;
+                                logCollision(th, 'AI OFF');
+                            }
+                        }
+                    } else if (dist > COLLISION_RADIUS + 0.05) {
+                        th.colliding = false;
+                    }
+                }
+          
+                if (offCountEl) offCountEl.innerText = stats.offCollisions;
+                if (onCountEl) onCountEl.innerText = stats.onCollisions;
+          
+                let offMin = Math.max(stats.offTimeMs / 60000, 0.01);
+                let onMin = Math.max(stats.onTimeMs / 60000, 0.01);
+                if (offRateEl) offRateEl.innerText = (stats.offCollisions / offMin).toFixed(1) + ' / min';
+                if (onRateEl) onRateEl.innerText = (stats.onCollisions / onMin).toFixed(1) + ' / min';
+          
+                if (reductionEl) {
+                    let offRate = stats.offCollisions / offMin;
+                    let onRate = stats.onCollisions / onMin;
+                    let reduction = offRate > 0 ? ((offRate - onRate) / offRate) * 100 : 0;
+                    reduction = Math.max(0, Math.min(100, reduction));
+                    reductionEl.innerText = reduction.toFixed(0) + '%';
+                }
+            }
+          
+            // --- 6d. INITIALIZATION OF TELEMETRY CHART & EMBEDDED REPORT ---
+            let telemetryChartInitialized = false;
+            if (telemetryChartEl) {
+                Plotly.newPlot(telemetryChartEl, [{
+                    type: 'scatter', mode: 'lines', x: [], y: [],
+                    line: { color: '#58a6ff', width: 2 }
+                }], {
+                    margin: { l: 30, r: 10, t: 10, b: 25 },
+                    paper_bgcolor: '#0d1117', plot_bgcolor: '#0d1117',
+                    font: { color: '#8b949e', size: 9 },
+                    xaxis: { showgrid: false, zeroline: false },
+                    yaxis: { showgrid: true, gridcolor: '#21262d', zeroline: false, range: [0.7, 1.3] }
+                }, { displayModeBar: false, responsive: true });
+                telemetryChartInitialized = true;
+            }
+          
+            if (reportChartImg) {
+                reportChartImg.addEventListener('error', () => {
+                    reportChartImg.classList.add('hidden');
+                    if (reportChartFallback) reportChartFallback.classList.remove('hidden');
+                });
+                reportChartImg.addEventListener('load', () => {
+                    reportChartImg.classList.remove('hidden');
+                    if (reportChartFallback) reportChartFallback.classList.add('hidden');
+                });
+                function refreshReportChart() {
+                    reportChartImg.src = 'http://127.0.0.1:8000/report-chart?t=' + Date.now();
+                }
+                refreshReportChart();
+                setInterval(refreshReportChart, 3000);
+            }
+          
+            function refreshQTable() {
+                if (!qTableViewEl) return;
+                fetch('http://127.0.0.1:8000/rl-debug')
+                    .then(res => res.json())
+                    .then(data => {
+                        qTableViewEl.innerText = JSON.stringify(data, null, 2);
+                    })
+                    .catch(() => {
+                        qTableViewEl.innerText = "Q-table unavailable — is server.py running?";
+                    });
+            }
+            refreshQTable();
+            setInterval(refreshQTable, 2000);
+          
+            const rlResetBtn = document.getElementById('rl-reset-btn');
+            if (rlResetBtn) {
+                rlResetBtn.addEventListener('click', () => {
+                    fetch('http://127.0.0.1:8000/rl-reset')
+                        .then(res => res.json())
+                        .then(() => {
+                            refreshQTable();
+                            logDecision("RL agent memory reset.");
+                        });
+                });
+            }
+          
+            // --- 6. PLOT CREATION ---
+            let latestNearestDist = new Array(numSats).fill(Infinity);
+            let latestMultiplier = 1.0;
+            let latestSatMultipliers = new Array(numSats).fill(1.0);
+            let latestSafeDirections = new Array(numSats).fill('INCREASE');
+            let lastReportedOnCollisions = 0; 
+            let lastRLStepTime = 0;
+            const RL_STEP_INTERVAL_MS = 300; 
+          
+            let marsGeom = buildMarsGeometry();
+            let data = [
+                buildStars(),
+                {
+                    type: 'surface',
+                    x: marsGeom.x, y: marsGeom.y, z: marsGeom.z,
+                    surfacecolor: buildMarsColor(0),
+                    colorscale: [
+                        [0.0, '#4a1505'], [0.25, '#8c2d19'], [0.5, '#b33922'],
+                        [0.75, '#d95326'], [1.0, '#f27441']
+                    ],
+                    showscale: false,
+                    lighting: { ambient: 0.3, diffuse: 0.8, specular: 0.1 },
+                    hoverinfo: 'none'
+                },
+                buildDebris(1.0),
+                {
+                    type: 'scatter3d', mode: 'markers+text',
+                    x: getSatellites([]).x, y: getSatellites([]).y, z: getSatellites([]).z,
+                    text: Array.from({length: numSats}, (_, i) => 'SAT-' + i),
+                    textposition: 'top center',
+                    textfont: { color: '#58a6ff', size: 10 },
+                    marker: { size: 6, color: '#58a6ff', symbol: 'circle' },
+                    name: 'Satellites',
+                    hoverinfo: 'text'
+                },
+                {
+                    type: 'scatter3d', mode: 'markers',
+                    x: getThreatPositions(0).x, y: getThreatPositions(0).y, z: getThreatPositions(0).z,
+                    marker: { size: 4, color: '#f85149', symbol: 'diamond' },
+                    name: 'Debris Threats',
+                    hoverinfo: 'name'
+                },
+                {
+                    type: 'scatter3d', mode: 'markers+text',
+                    x: getMoonPositions(0).x, y: getMoonPositions(0).y, z: getMoonPositions(0).z,
+                    text: marsMoons.map(m => m.name),
+                    textposition: 'top center',
+                    textfont: { color: '#c8c2b6', size: 9 },
+                    marker: { size: marsMoons.map(m => m.size), color: marsMoons.map(m => m.color), symbol: 'circle' },
+                    name: 'Moons',
+                    hoverinfo: 'text'
+                }
+            ];
+          
+            const AXIS_X_RANGE = 10.0;
+            const AXIS_Y_RANGE = 10.0;
+            const AXIS_Z_RANGE = 10.0;
+          
+            let defaultCamera = {
+                eye: { x: 0, y: -.6, z: -.5 },
+                up: { x: 0.0, y: 0, z: 0.0 },
+                center: { x: 0, y: 0, z: 0 }
+            };
+          
+            let layout = {
+                scene: {
+                    xaxis: { visible: false, range: [-AXIS_X_RANGE, AXIS_X_RANGE] },
+                    yaxis: { visible: false, range: [-AXIS_Y_RANGE, AXIS_Y_RANGE] },
+                    zaxis: { visible: false, range: [-AXIS_Z_RANGE, AXIS_Z_RANGE] },
+                    aspectmode: 'data',
+                    bgcolor: '#000000',
+                    camera: defaultCamera
+                },
+                margin: { l: 0, r: 0, b: 0, t: 0 },
+                paper_bgcolor: '#000000',
+                showlegend: false
+            };
+          
+            Plotly.newPlot(plotDiv, data, layout, { responsive: true });
+          
+            let followedSatIndex = null;
+            const CAMERA_SCALE = Math.max(AXIS_X_RANGE, AXIS_Y_RANGE, AXIS_Z_RANGE);
+          
+            function cameraForSatellite(satIdx, satsX, satsY, satsZ) {
+                let nx = satsX[satIdx] / CAMERA_SCALE;
+                let ny = satsY[satIdx] / CAMERA_SCALE;
+                let nz = satsZ[satIdx] / CAMERA_SCALE;
+                return {
+                    eye: { x: nx * 1.5 - 0.4, y: ny * 1.5 - 0.4, z: nz * 1.5 + 0.3 },
+                    center: { x: nx, y: ny, z: nz },
+                    up: { x: 0, y: 0, z: 1 }
+                };
+            }
+          
+            plotDiv.on('plotly_click', function(data) {
+                if (!data.points || data.points.length === 0) return;
+                let pt = data.points[0];
+                if (pt.curveNumber === 3) {
+                    let satIdx = pt.pointIndex;
+                    if (followedSatIndex === satIdx) {
+                        followedSatIndex = null;
+                        Plotly.relayout(plotDiv, { 'scene.camera': defaultCamera });
+                        statusText.innerText = aiEnabled ? "AI Active — Orbit Optimized" : "AI Disabled — Baseline Orbit";
+                    } else {
+                        followedSatIndex = satIdx;
+                        statusText.innerText = "Following SAT-" + satIdx + " (Click satellite again to unfollow)";
+                    }
+                }
+            });
+          
+            if (resetViewBtn) {
+                resetViewBtn.addEventListener('click', () => {
+                    followedSatIndex = null;
+                    Plotly.relayout(plotDiv, { 'scene.camera': defaultCamera });
+                    statusText.innerText = aiEnabled ? "AI Active — Orbit Optimized" : "AI Disabled — Baseline Orbit";
+                });
+            }
+          
+            // --- TAB SWITCHING LOGIC ---
+            function switchTab(activeTab) {
+                const tabs = [
+                    { btn: tabBtnControl, panel: tabPanelControl },
+                    { btn: tabBtnCollisions, panel: tabPanelCollisions },
+                    { btn: tabBtnTelemetry, panel: tabPanelTelemetry },
+                    { btn: tabBtnAssistant, panel: tabPanelAssistant }
+                ];
+                tabs.forEach(t => {
+                    if (!t.btn || !t.panel) return;
+                    if (t.btn === activeTab) {
+                        t.btn.classList.add('active');
+                        t.panel.classList.remove('hidden');
+                    } else {
+                        t.btn.classList.remove('active');
+                        t.panel.classList.add('hidden');
+                    }
+                });
+            }
+          
+            if (tabBtnControl) tabBtnControl.addEventListener('click', () => switchTab(tabBtnControl));
+            if (tabBtnCollisions) tabBtnCollisions.addEventListener('click', () => switchTab(tabBtnCollisions));
+            if (tabBtnTelemetry) {
+              tabBtnTelemetry.addEventListener('click', (e) => {
+                  e.preventDefault();
+                  //launch telemetry data in an independent browser tab
+                  window.open('http://127.0.0.1:8000/telemetry.html', '_blank');
+              });
+          
+            }
+           if (tabBtnAssistant) {
+              tabBtnAssistant.addEventListener('click', (e) => {
+                  e.preventDefault();
+                  // Launch assistant in an independent browser tab
+                  window.open('http://127.0.0.1:8000/assistant.html', '_blank');
+              });
+          }
+          
+            // --- AI TOGGLE BUTTON ---
+            if (aiToggleBtn) {
+                aiToggleBtn.addEventListener('click', () => {
+                    aiEnabled = !aiEnabled;
+                    if (aiEnabled) {
+                        aiToggleBtn.innerText = "🤖 AI Defense: ON";
+                        aiToggleBtn.classList.remove('off');
+                        statusText.innerText = "AI Active — Shielding Satellites";
+                    } else {
+                        aiToggleBtn.innerText = "🤖 AI Defense: OFF";
+                        aiToggleBtn.classList.add('off');
+                        statusText.innerText = "AI Disabled — Baseline Orbit";
+                    }
+                });
+            }
+          
+            // --- SATELLITE STATUS TABLE & TELEMETRY CHART UPDATER ---
+            function updateTelemetryUI(satsX, satsY, satsZ, threatX, threatY, threatZ, multipliers) {
+                let nearestDists = getNearestThreatDistances(satsX, satsY, satsZ, threatX, threatY, threatZ);
+                latestNearestDist = nearestDists;
+                if (multipliers && multipliers.length > 0) {
+                    latestMultiplier = multipliers[0];
+                }
+          
+                if (satTableBodyEl) {
+                    let html = '';
+                    for (let i = 0; i < numSats; i++) {
+                        let dist = nearestDists[i];
+                        let mult = (multipliers && multipliers[i] !== undefined) ? multipliers[i] : 1.0;
+                        let badgeClass = 'badge-safe';
+                        let badgeText = 'SAFE';
+          
+                        if (dist < COLLISION_RADIUS) {
+                            badgeClass = 'badge-danger';
+                            badgeText = 'DANGER';
+                        } else if (dist < CAUTION_DISTANCE) {
+                            badgeClass = 'badge-caution';
+                            badgeText = 'CAUTION';
+                        }
+          
+                        html += `<tr onclick="followedSatIndex=${i};">
+                            <td>SAT-${i}</td>
+                            <td>${mult.toFixed(2)}x</td>
+                            <td>${dist !== undefined ? dist.toFixed(2) : '—'}</td>
+                            <td><span class="${badgeClass}">${badgeText}</span></td>
+                        </tr>`;
+                    }
+                    satTableBodyEl.innerHTML = html;
+                }
+          
+                if (telemetryChartInitialized && telemetryChartEl && multipliers && multipliers.length > 0) {
+                    let avgMult = multipliers.reduce((a, b) => a + b, 0) / multipliers.length;
+                    telemetryTimes.push(timeStep);
+                    telemetryValues.push(avgMult);
+                    if (telemetryTimes.length > TELEMETRY_WINDOW) {
+                        telemetryTimes.shift();
+                        telemetryValues.shift();
+                    }
+                    Plotly.react(telemetryChartEl, [{
+                        type: 'scatter', mode: 'lines', x: telemetryTimes, y: telemetryValues,
+                        line: { color: '#58a6ff', width: 2 }
+                    }], {
+                        margin: { l: 30, r: 10, t: 10, b: 25 },
+                        paper_bgcolor: '#0d1117', plot_bgcolor: '#0d1117',
+                        font: { color: '#8b949e', size: 9 },
+                        xaxis: { showgrid: false, zeroline: false },
+                        yaxis: { showgrid: true, gridcolor: '#21262d', zeroline: false, range: [0.7, 1.3] }
+                    }, { displayModeBar: false });
+                }
+            }
+          
+            // --- CHATBOT ASSISTANT LOGIC ---
+            let chatHistory = [];
+          
+            function gatherLiveContext() {
+                let minDist = Math.min(...latestNearestDist);
+                return {
+                    ai_enabled: aiEnabled,
+                    time_step: Math.floor(timeStep),
+                    orbit_multiplier: latestMultiplier,
+                    off_collisions: stats.offCollisions,
+                    on_collisions: stats.onCollisions,
+                    min_nearest_distance: Number(minDist.toFixed(2)),
+                    satellites_count: numSats
+                };
+            }
+          
+            function appendChatBubble(role, text, className) {
+                if (!chatMessagesEl) return null;
+                let bubble = document.createElement('div');
+                bubble.className = 'chat-bubble ' + role + (className ? ' ' + className : '');
+                bubble.textContent = text;
+                chatMessagesEl.appendChild(bubble);
+                chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+                return bubble;
+            }
+          
+            function sendChatMessage() {
+                if (!chatInputEl) return;
+                let message = chatInputEl.value.trim();
+                if (!message) return;
+          
+                appendChatBubble('user', message);
+                chatInputEl.value = '';
+                if (chatSendBtn) chatSendBtn.disabled = true;
+          
+                let pendingBubble = appendChatBubble('assistant', 'Thinking…', 'pending');
+          
+                fetch('http://127.0.0.1:8000/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: message,
+                        history: chatHistory,
+                        context: gatherLiveContext()
+                    })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (pendingBubble) pendingBubble.remove();
+                    appendChatBubble('assistant', data.reply, data.error ? 'error' : null);
+                    if (!data.error) {
+                        chatHistory.push({ role: 'user', content: message });
+                        chatHistory.push({ role: 'assistant', content: data.reply });
+                        if (chatHistory.length > 20) chatHistory = chatHistory.slice(-20);
+                    }
+                })
+                .catch(() => {
+                    if (pendingBubble) pendingBubble.remove();
+                    appendChatBubble('assistant', "Can't reach the backend — make sure server.py is running.", 'error');
+                })
+                .finally(() => {
+                    if (chatSendBtn) chatSendBtn.disabled = false;
+                });
+            }
+          
+            if (chatSendBtn) chatSendBtn.addEventListener('click', sendChatMessage);
+            if (chatInputEl) {
+                chatInputEl.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') sendChatMessage();
+                });
+            }
+          
+            // --- 7. ANIMATION LOOP ---
+            let satMultipliers = new Array(numSats).fill(1.0);
+          
+            async function animateLoop(timestamp) {
+                if (!isAnimating) return;
+          
+                let dt = timestamp - lastFrameTime;
+                lastFrameTime = timestamp;
+          
+                let speedMult = parseFloat(speedSlider ? speedSlider.value : 1.0);
+                let dtSim = 0.05 * speedMult;
+                timeStep += dtSim;
+          
+                // Ensure angles advance incrementally prior to generating spatial coordinates
+                let effectiveMultipliers = aiEnabled ? satMultipliers : new Array(numSats).fill(1.0);
+                advanceSatelliteOrbits(effectiveMultipliers, dtSim);
+          
+                updateCollisionStats(dt);
+          
+                if (aiEnabled && (timestamp - lastRLStepTime > RL_STEP_INTERVAL_MS)) {
+                    lastRLStepTime = timestamp;
+          
+                    let tempSatsX = getSatellites(satMultipliers).x;
+                    let tempSatsY = getSatellites(satMultipliers).y;
+                    let tempSatsZ = getSatellites(satMultipliers).z;
+                    let tempThreatX = getThreatPositions(timeStep).x;
+                    let tempThreatY = getThreatPositions(timeStep).y;
+                    let tempThreatZ = getThreatPositions(timeStep).z;
+          
+                    let nearestDists = getNearestThreatDistances(tempSatsX, tempSatsY, tempSatsZ, tempThreatX, tempThreatY, tempThreatZ);
+                    let safeDirs = getSafeDirections(tempSatsX, tempSatsY, tempSatsZ, tempThreatX, tempThreatY, tempThreatZ);
+          
+                    let payloadSatellites = [];
+                    for (let i = 0; i < numSats; i++) {
+                        payloadSatellites.push({
+                            sat_idx: i,
+                            distance: nearestDists[i],
+                            had_collision: satOnCollisions[i] > lastReportedSatCollisions[i],
+                            safe_direction: safeDirs[i]
+                        });
+                    }
+                    lastReportedSatCollisions = [...satOnCollisions];
+          
+                    try {
+                        let response = await fetch('http://127.0.0.1:8000/rl-step-multi', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ satellites: payloadSatellites })
+                        });
+                        let rlData = await response.json();
+                        let numShielded = 0;
+                        for (let r of rlData.results) {
+                            satMultipliers[r.sat_idx] = r.multiplier;
+                            if (r.shielded) numShielded++;
+                        }
+                        statusText.innerText = numShielded > 0 ?
+                            (numShielded + ' satellite(s) — SHIELD OVERRIDE') : 'Learning (epsilon=' + rlData.epsilon + ')';
+                        statusText.style.color = numShielded > 0 ?
+                            '#f85149' : '#58a6ff';
+                    } catch (error) {
+                        statusText.innerText = "Internal Sync (Backup Active)";
+                        statusText.style.color = '#ffb454';
+                        let backupVal = 1.0 + 0.15 * Math.sin(timeStep * 0.05);
+                        satMultipliers = new Array(numSats).fill(backupVal);
+                    }
+                } else if (!aiEnabled) {
+                    statusText.innerText = "AI Disabled — Baseline Orbit";
+                    statusText.style.color = '#8b949e';
+                    satMultipliers = new Array(numSats).fill(1.0);
+                }
+          
+                latestSatMultipliers = satMultipliers;
+                
+                if (altVal) altVal.innerText = effectiveMultipliers[0].toFixed(2);
+          
+                let newSats = getSatellites(effectiveMultipliers);
+                let newThreats = getThreatPositions(timeStep);
+                let newMoons = getMoonPositions(timeStep);
+          
+                updateTelemetryUI(newSats.x, newSats.y, newSats.z, newThreats.x, newThreats.y, newThreats.z, effectiveMultipliers);
+          
+                let marsRotationAngle = timeStep * MARS_ROTATION_SPEED;
+                let newMarsColor = buildMarsColor(marsRotationAngle);
+                Plotly.restyle(plotDiv, { 'surfacecolor': [newMarsColor] }, [1]);
+          
+                let dataUpdate = {
+                    'x': [newSats.x, newThreats.x, newMoons.x],
+                    'y': [newSats.y, newThreats.y, newMoons.y],
+                    'z': [newSats.z, newThreats.z, newMoons.z]
+                };
+          
+                if (followedSatIndex !== null) {
+                    Plotly.update(plotDiv, dataUpdate, {
+                        'scene.camera': cameraForSatellite(followedSatIndex, newSats.x, newSats.y, newSats.z)
+                    }, [3, 4, 5]);
+                } else {
+                    Plotly.restyle(plotDiv, dataUpdate, [3, 4, 5]);
+                }
+          
+                requestAnimationFrame(animateLoop);
+            }
+          
+            requestAnimationFrame(animateLoop);
+          
+            if (speedSlider) {
+                speedSlider.addEventListener('input', (e) => {
+                    if (speedVal) speedVal.innerText = e.target.value;
+                });
+            }
+          
+            if (toggleBtn) {
+                toggleBtn.addEventListener('click', () => {
+                    isAnimating = !isAnimating;
+                    toggleBtn.innerText = isAnimating ? "⏸ Pause Simulation" : "▶ Resume Simulation";
+                    if (isAnimating) requestAnimationFrame(animateLoop);
+                });
+            }
+          
+          });
+    </script>
 </body>
 </html>
