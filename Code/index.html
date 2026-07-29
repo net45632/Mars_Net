@@ -533,8 +533,8 @@
             </div>
 
             <div class="download-links">
-                <a href="http://127.0.0.1:8000/download-log" class="secondary-btn download-link" download>⬇ Model Log CSV</a>
-                <a href="http://127.0.0.1:8000/download-sim-log" class="secondary-btn download-link" download>⬇ Sim Log CSV</a>
+                <a href="/download-log" class="secondary-btn download-link" download>⬇ Model Log CSV</a>
+                <a href="/download-sim-log" class="secondary-btn download-link" download>⬇ Sim Log CSV</a>
             </div>
         </div>
 
@@ -857,7 +857,7 @@
                 let numCaution = latestNearestDist.filter(d => d >= COLLISION_RADIUS && d < CAUTION_DISTANCE).length;
                 let numDanger = latestNearestDist.filter(d => d < COLLISION_RADIUS).length;
           
-                fetch('http://127.0.0.1:8000/telemetry', {
+                fetch('/telemetry', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -979,7 +979,7 @@
                     if (reportChartFallback) reportChartFallback.classList.add('hidden');
                 });
                 function refreshReportChart() {
-                    reportChartImg.src = 'http://127.0.0.1:8000/report-chart?t=' + Date.now();
+                    reportChartImg.src = '/session-report?t=' + Date.now();
                 }
                 refreshReportChart();
                 setInterval(refreshReportChart, 3000);
@@ -987,7 +987,7 @@
           
             function refreshQTable() {
                 if (!qTableViewEl) return;
-                fetch('http://127.0.0.1:8000/rl-debug')
+                fetch('/rl-debug')
                     .then(res => res.json())
                     .then(data => {
                         qTableViewEl.innerText = JSON.stringify(data, null, 2);
@@ -1002,7 +1002,7 @@
             const rlResetBtn = document.getElementById('rl-reset-btn');
             if (rlResetBtn) {
                 rlResetBtn.addEventListener('click', () => {
-                    fetch('http://127.0.0.1:8000/rl-reset')
+                    fetch('/rl-reset')
                         .then(res => res.json())
                         .then(() => {
                             refreshQTable();
@@ -1275,7 +1275,7 @@
           
                 let pendingBubble = appendChatBubble('assistant', 'Thinking…', 'pending');
           
-                fetch('http://127.0.0.1:8000/chat', {
+                fetch('/chat', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -1354,7 +1354,7 @@
                     lastReportedSatCollisions = [...satOnCollisions];
           
                     try {
-                        let response = await fetch('http://127.0.0.1:8000/rl-step-multi', {
+                        let response = await fetch('/rl-step-multi', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ satellites: payloadSatellites })

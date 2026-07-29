@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@300;400;600;700;800&display=swap" rel="stylesheet">
-    
+
     <style>
         :root {
             --bg-dark: #07090e;
@@ -16,8 +16,21 @@
             --accent-cyan: #38bdf8;
             --accent-purple: #818cf8;
             --accent-green: #34d399;
+            --accent-red: #f87171;
             --text-main: #f3f4f6;
             --text-muted: #9ca3af;
+            --grid-line: rgba(255, 255, 255, 0.03);
+            --orb-opacity: 0.18;
+        }
+
+        body.light-theme {
+            --bg-dark: #eef1f6;
+            --card-bg: rgba(255, 255, 255, 0.75);
+            --card-border: rgba(15, 23, 42, 0.08);
+            --text-main: #0f172a;
+            --text-muted: #52606d;
+            --grid-line: rgba(15, 23, 42, 0.04);
+            --orb-opacity: 0.12;
         }
 
         * {
@@ -32,6 +45,7 @@
             color: var(--text-main);
             overflow-x: hidden;
             line-height: 1.6;
+            transition: background-color 0.3s ease, color 0.3s ease;
         }
 
         /* --- BACKGROUND ANIMATIONS --- */
@@ -41,11 +55,12 @@
             left: 0;
             width: 100vw;
             height: 100vh;
-            background-image: 
-                linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-                linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            background-image:
+                linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
+                linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
             background-size: 50px 50px;
             z-index: -2;
+            transition: background-image 0.3s ease;
         }
 
         .glow-orb {
@@ -54,10 +69,11 @@
             height: 600px;
             border-radius: 50%;
             filter: blur(140px);
-            opacity: 0.18;
+            opacity: var(--orb-opacity);
             pointer-events: none;
             z-index: -1;
             animation: floatGlow 12s infinite alternate ease-in-out;
+            transition: opacity 0.3s ease;
         }
 
         .orb-1 {
@@ -90,6 +106,11 @@
             position: sticky;
             top: 0;
             z-index: 100;
+            transition: background-color 0.3s ease, border-color 0.3s ease;
+        }
+
+        body.light-theme nav {
+            background: rgba(238, 241, 246, 0.75);
         }
 
         .logo {
@@ -99,7 +120,7 @@
             font-weight: 800;
             font-size: 1.25rem;
             letter-spacing: -0.5px;
-            background: linear-gradient(135deg, #fff 0%, var(--text-muted) 100%);
+            background: linear-gradient(135deg, var(--text-main) 0%, var(--text-muted) 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
@@ -119,7 +140,29 @@
         }
 
         .nav-links a:hover {
-            color: #fff;
+            color: var(--text-main);
+        }
+
+        /* --- THEME TOGGLE --- */
+        .theme-toggle {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            color: var(--text-main);
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            padding: 0;
+        }
+
+        .theme-toggle:hover {
+            border-color: var(--accent-cyan);
+            transform: translateY(-2px);
         }
 
         /* --- BUTTONS --- */
@@ -159,6 +202,10 @@
             border: 1px solid var(--card-border);
             backdrop-filter: blur(10px);
             transition: all 0.3s ease;
+        }
+
+        body.light-theme .btn-secondary {
+            background: rgba(15, 23, 42, 0.04);
         }
 
         .btn-secondary:hover {
@@ -204,7 +251,7 @@
             line-height: 1.1;
             letter-spacing: -1.5px;
             margin-bottom: 1.5rem;
-            background: linear-gradient(180deg, #FFFFFF 0%, #94A3B8 100%);
+            background: linear-gradient(180deg, var(--text-main) 0%, var(--text-muted) 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
@@ -223,7 +270,7 @@
             align-items: center;
         }
 
-        /* --- HERO GRAPHIC PREVIEW --- */
+        /* --- PROBLEM / SOLUTION PANEL --- */
         .preview-container {
             max-width: 1000px;
             margin: 3rem auto 6rem;
@@ -235,13 +282,9 @@
         }
 
         .preview-window {
-            background: #0d1117;
+            background: var(--card-bg);
             border-radius: 12px;
             padding: 2rem;
-            display: flex;
-            flex-direction: column;
-            gap: 1.5rem;
-            text-align: left;
             position: relative;
             overflow: hidden;
         }
@@ -249,25 +292,59 @@
         .window-header {
             display: flex;
             gap: 8px;
-            margin-bottom: 1rem;
+            margin-bottom: 1.5rem;
         }
 
         .dot { width: 12px; height: 12px; border-radius: 50%; background: #333; }
-        .dot.red { background: #ff5f56; }
+        .dot.red { background: var(--accent-red); }
         .dot.yellow { background: #ffbd2e; }
-        .dot.green { background: #27c93f; }
+        .dot.green { background: var(--accent-green); }
 
-        .code-preview {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.9rem;
-            color: #e6edf3;
-            line-height: 1.7;
+        .ps-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
         }
 
-        .code-keyword { color: #ff7b72; }
-        .code-func { color: #d2a8ff; }
-        .code-str { color: #a5d6ff; }
-        .code-comment { color: #8b949e; font-style: italic; }
+        .ps-col {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .ps-col + .ps-col {
+            border-left: 1px solid var(--card-border);
+            padding-left: 2rem;
+        }
+
+        .ps-eyebrow {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            font-weight: 500;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: var(--text-muted);
+        }
+
+        .ps-col h3 {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .ps-col p {
+            font-size: 0.92rem;
+            color: var(--text-muted);
+            line-height: 1.6;
+        }
+
+        @media (max-width: 700px) {
+            .ps-grid { grid-template-columns: 1fr; }
+            .ps-col + .ps-col { border-left: none; padding-left: 0; border-top: 1px solid var(--card-border); padding-top: 1.5rem; }
+        }
 
         /* --- FEATURES SECTION --- */
         .features {
@@ -307,6 +384,10 @@
             border-color: rgba(255, 255, 255, 0.2);
             transform: translateY(-4px);
             background: rgba(22, 27, 38, 0.8);
+        }
+
+        body.light-theme .card:hover {
+            background: rgba(255, 255, 255, 0.95);
         }
 
         .card-icon {
@@ -362,6 +443,7 @@
             <a href="#features">Features</a>
             <a href="#telemetry">Telemetry</a>
             <a href="/index.html" class="btn-primary">Try Simulator &rarr;</a>
+            <button id="theme-toggle" class="theme-toggle" aria-label="Switch to light theme" title="Toggle theme">🌙</button>
         </div>
     </nav>
 
@@ -389,13 +471,18 @@
                 <div class="dot yellow"></div>
                 <div class="dot green"></div>
             </div>
-            <pre class="code-preview"><code><span class="code-comment"># Initializing multi-satellite reinforcement learning agent</span>
-<span class="code-keyword">from</span> RL_Agent <span class="code-keyword">import</span> agent <span class="code-keyword">as</span> rl_agent
-
-<span class="code-keyword">async def</span> <span class="code-func">step_orbital_simulation</span>(satellites):
-    <span class="code-comment"># Real-time state evaluation and collision-mitigation dynamic multiplier computation</span>
-    action_batch = rl_agent.<span class="code-func">step_batch</span>([sat.<span class="code-func">dict</span>() <span class="code-keyword">for</span> sat <span class="code-keyword">in</span> satellites])
-    <span class="code-keyword">return</span> { <span class="code-str">"status"</span>: <span class="code-str">"OPTIMAL_ORBIT"</span>, <span class="code-str">"telemetry"</span>: action_batch }</code></pre>
+            <div class="ps-grid">
+                <div class="ps-col">
+                    <div class="ps-eyebrow"><span class="dot red" style="width:8px;height:8px;"></span> The Problem</div>
+                    <h3>Mars orbit is getting crowded</h3>
+                    <p>Landers, relay orbiters, and drifting debris increasingly share the same lanes. A single missed maneuver can cascade into a fleet-wide loss, and ground-controlled, rule-based avoidance doesn't scale once dozens of objects are moving at once.</p>
+                </div>
+                <div class="ps-col">
+                    <div class="ps-eyebrow"><span class="dot green" style="width:8px;height:8px;"></span> The Solution</div>
+                    <h3>Agents that learn to dodge on their own</h3>
+                    <p>MarsNet-RL trains a fleet of satellite agents to learn their own collision-avoidance policies through reinforcement learning, reacting to threats in real time. A symbolic safety shield still forces a hard evasive maneuver the instant any agent strays into the danger zone.</p>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -426,8 +513,19 @@
 
     <footer>
         <div>Marsnet Orbital Dynamics Simulator</div>
-        <div>Built with FastAPI, PyTorch & Matplotlib</div>
+        <div>Built with FastAPI &amp; Q-Learning</div>
     </footer>
 
+    <script>
+        const themeToggle = document.getElementById('theme-toggle');
+        if (themeToggle) {
+            themeToggle.addEventListener('click', () => {
+                document.body.classList.toggle('light-theme');
+                const isLight = document.body.classList.contains('light-theme');
+                themeToggle.textContent = isLight ? '☀️' : '🌙';
+                themeToggle.setAttribute('aria-label', isLight ? 'Switch to dark theme' : 'Switch to light theme');
+            });
+        }
+    </script>
 </body>
 </html>

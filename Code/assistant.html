@@ -234,7 +234,7 @@
             // --- Q-Table Logic ---
             function refreshQTable() {
                 if (!qTableViewEl) return;
-                fetch('http://127.0.0.1:8000/rl-debug')
+                fetch('/rl-debug')
                     .then(res => res.json())
                     .then(data => {
                         qTableViewEl.innerText = JSON.stringify(data, null, 2);
@@ -250,7 +250,7 @@
 
             if (rlResetBtn) {
                 rlResetBtn.addEventListener('click', () => {
-                    fetch('http://127.0.0.1:8000/rl-reset')
+                    fetch('/rl-reset')
                         .then(res => res.json())
                         .then(() => {
                             refreshQTable();
@@ -281,7 +281,7 @@
 
                 let pendingBubble = appendChatBubble('assistant', 'Thinking…', 'pending');
 
-                fetch('http://127.0.0.1:8000/chat', {
+                fetch('/chat', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
